@@ -27,14 +27,45 @@ func listen(fftSize int) chan []float64 {
 		portaudio.Initialize()
 		defer portaudio.Terminate()
 
+		devices, err := portaudio.Devices()
+		var device *portaudio.DeviceInfo
+		for _, deviceInfo := range devices {
+			if deviceInfo.MaxInputChannels >= 2 {
+				device = deviceInfo
+				break
+			}
+		}
+
+		if device != nil {
+			log.Printf("Use %v", device)
+		} else {
+			log.Fatalf("No devices found with stereo input")
+			for _, deviceInfo := range devices {
+				log.Fatalf("%v", deviceInfo)
+			}
+		}
+
 		in := make([]int32, fftSize)
-		stream, err := portaudio.OpenDefaultStream(2, 0, 48000, len(in), in)
+
+		stream, err := portaudio.OpenStream(portaudio.StreamParameters{
+			Input: portaudio.StreamDeviceParameters{
+				Device:   device,
+				Channels: 2,
+				Latency:  device.DefaultHighInputLatency,
+			},
+			Output: portaudio.StreamDeviceParameters{
+				Device:   nil,
+				Channels: 0,
+				Latency:  0,
+			},
+			SampleRate:      device.DefaultSampleRate,
+			FramesPerBuffer: len(in),
+			Flags:           portaudio.NoFlag,
+		}, in)
 		if err != nil {
 			panic(err)
 		}
 		defer stream.Close()
-
-		fmt.Printf("%v\n", stream)
 
 		if err = stream.Start(); err != nil {
 			panic(err)
@@ -48,19 +79,19 @@ func listen(fftSize int) chan []float64 {
 			}
 
 			for i := 0; i < len(in); i += 2 {
-				buf[i/2] = complex(float64(in[i]) / 0x1000000, float64(in[i+1]) / 0x1000000)
+				buf[i/2] = complex(float64(in[i])/0x1000000, float64(in[i+1])/0x1000000)
 			}
 
 			// window.Apply(buf, window.Hamming)
 			result := fft.FFT(buf)
 			// real
 			for i := 0; i < len(buf)/2; i++ {
-				power := math.Sqrt(real(result[i]) * real(result[i]) + imag(result[i]) * imag(result[i]))
+				power := math.Sqrt(real(result[i])*real(result[i]) + imag(result[i])*imag(result[i]))
 				fftResult[i+len(buf)/2] = 20 * math.Log10(power)
 			}
 			// imag
-			for i := len(buf)/2; i < len(buf); i++ {
-				power := math.Sqrt(real(result[i]) * real(result[i]) + imag(result[i]) * imag(result[i]))
+			for i := len(buf) / 2; i < len(buf); i++ {
+				power := math.Sqrt(real(result[i])*real(result[i]) + imag(result[i])*imag(result[i]))
 				fftResult[i-len(buf)/2] = 20 * math.Log10(power)
 			}
 
@@ -72,10 +103,10 @@ func listen(fftSize int) chan []float64 {
 }
 
 func main() {
+	var err error
+
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	running = true
-
-	var err error
 
 	if err = glfw.Init(); err != nil {
 		log.Fatalf("%v\n", err)
@@ -98,7 +129,7 @@ func main() {
 
 	defer glfw.CloseWindow()
 
-	glfw.SetWindowTitle("Draw")
+	glfw.SetWindowTitle("Go KX3 Panadapter")
 	glfw.SetSwapInterval(1)
 	glfw.SetKeyCallback(onKey)
 	glfw.SetMouseButtonCallback(onMouseBtn)
@@ -130,7 +161,9 @@ func main() {
 			result := v.([]float64)
 			for x := 0; x < fftBinSize; x++ {
 				p := result[x] / dynamicRange
-				if p < 0 { p = 0 }
+				if p < 0 {
+					p = 0
+				}
 
 				r := 0.0
 				g := 0.0
@@ -215,7 +248,9 @@ func main() {
 		for i := 0; i < len(fftResult); i++ {
 			x := float64(i) * unit
 			p := fftResult[i] / dynamicRange
-			if p < 0 { p = 0 }
+			if p < 0 {
+				p = 0
+			}
 			gl.Vertex2d(x, p)
 		}
 		gl.End()
