@@ -27,41 +27,53 @@ func listen(fftSize int) chan []float64 {
 		portaudio.Initialize()
 		defer portaudio.Terminate()
 
-		devices, err := portaudio.Devices()
-		var device *portaudio.DeviceInfo
-		for _, deviceInfo := range devices {
-			if deviceInfo.MaxInputChannels >= 2 {
-				device = deviceInfo
-				break
-			}
-		}
+		//		devices, err := portaudio.Devices()
+		//		var device *portaudio.DeviceInfo
+		//		for _, deviceInfo := range devices {
+		//			if deviceInfo.MaxInputChannels >= 2 {
+		//				device = deviceInfo
+		//				break
+		//			}
+		//		}
+		//
+		//		if device != nil {
+		//			log.Printf("Use %v", device)
+		//		} else {
+		//			log.Fatalf("No devices found with stereo input")
+		//			for _, deviceInfo := range devices {
+		//				log.Fatalf("%v", deviceInfo)
+		//			}
+		//		}
+		//
+		//		in := make([]int32, fftSize)
+		//
+		//		stream, err := portaudio.OpenStream(portaudio.StreamParameters{
+		//			Input: portaudio.StreamDeviceParameters{
+		//				Device:   device,
+		//				Channels: 2,
+		//				Latency:  device.DefaultHighInputLatency,
+		//			},
+		//			Output: portaudio.StreamDeviceParameters{
+		//				Device:   nil,
+		//				Channels: 0,
+		//				Latency:  0,
+		//			},
+		//			SampleRate:      device.DefaultSampleRate,
+		//			FramesPerBuffer: len(in),
+		//			Flags:           portaudio.NoFlag,
+		//		}, in)
+		//		if err != nil {
+		//			panic(err)
+		//		}
+		//		defer stream.Close()
 
-		if device != nil {
-			log.Printf("Use %v", device)
-		} else {
-			log.Fatalf("No devices found with stereo input")
-			for _, deviceInfo := range devices {
-				log.Fatalf("%v", deviceInfo)
-			}
+		device, err := portaudio.DefaultInputDevice()
+		if err != nil {
+			panic(err)
 		}
 
 		in := make([]int32, fftSize)
-
-		stream, err := portaudio.OpenStream(portaudio.StreamParameters{
-			Input: portaudio.StreamDeviceParameters{
-				Device:   device,
-				Channels: 2,
-				Latency:  device.DefaultHighInputLatency,
-			},
-			Output: portaudio.StreamDeviceParameters{
-				Device:   nil,
-				Channels: 0,
-				Latency:  0,
-			},
-			SampleRate:      device.DefaultSampleRate,
-			FramesPerBuffer: len(in),
-			Flags:           portaudio.NoFlag,
-		}, in)
+		stream, err := portaudio.OpenDefaultStream(2, 0, device.DefaultSampleRate, len(in), in)
 		if err != nil {
 			panic(err)
 		}
