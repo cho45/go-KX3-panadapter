@@ -4,19 +4,25 @@ package main
 
 import (
 	"container/ring"
+	"errors"
 	"fmt"
 	"log"
 	"math"
+	"os"
 	"runtime"
 
 	"code.google.com/p/portaudio-go/portaudio"
+	"github.com/andrebq/gas"
 	"github.com/go-gl/gl"
 	"github.com/go-gl/glfw"
+	"github.com/go-gl/gltext"
 	"github.com/mjibson/go-dsp/fft"
 )
 
 var (
-	running bool
+	running    bool
+	sampleRate float64
+	fonts      [16]*gltext.Font
 )
 
 func listen(fftSize int) chan []float64 {
@@ -72,6 +78,8 @@ func listen(fftSize int) chan []float64 {
 			panic(err)
 		}
 
+		sampleRate = device.DefaultSampleRate
+
 		in := make([]int32, fftSize)
 		stream, err := portaudio.OpenDefaultStream(2, 0, device.DefaultSampleRate, len(in), in)
 		if err != nil {
@@ -116,6 +124,12 @@ func listen(fftSize int) chan []float64 {
 
 func main() {
 	var err error
+	width := 800
+	height := 600
+	historySize := 500
+	fftSize := 2048
+	fftBinSize := fftSize
+	dynamicRange := 100.0
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	running = true
@@ -124,21 +138,12 @@ func main() {
 		log.Fatalf("%v\n", err)
 		return
 	}
-
 	defer glfw.Terminate()
-
-	width := 800
-	height := 600
-	historySize := 500
-	fftSize := 2048
-	fftBinSize := fftSize
-	dynamicRange := 100.0
 
 	if err = glfw.OpenWindow(width, height, 8, 8, 8, 8, 0, 0, glfw.Windowed); err != nil {
 		log.Fatalf("%v\n", err)
 		return
 	}
-
 	defer glfw.CloseWindow()
 
 	glfw.SetWindowTitle("Go KX3 Panadapter")
@@ -158,6 +163,20 @@ func main() {
 	historyBitmap := make([]byte, fftBinSize*historySize*3)
 
 	texture := gl.GenTexture()
+
+	file, err := gas.Abs("code.google.com/p/freetype-go/testdata/luxisr.ttf")
+	if err != nil {
+		log.Printf("Find font file: %v", err)
+		return
+	}
+	for i := range fonts {
+		fonts[i], err = loadFont(file, int32(i+12))
+		if err != nil {
+			log.Printf("LoadFont: %v", err)
+			return
+		}
+		defer fonts[i].Release()
+	}
 
 	for running && glfw.WindowParam(glfw.Opened) == 1 {
 		fftResult := <-fftResultChan
@@ -217,7 +236,7 @@ func main() {
 			current[i*3+2] = byte(b)
 		}
 
-		gl.ClearColor(0, 0, 0, 1)
+		gl.ClearColor(0, 0, 0, 0)
 		gl.Clear(gl.COLOR_BUFFER_BIT)
 
 		// draw fft history
@@ -270,11 +289,16 @@ func main() {
 
 		// draw Text
 		withPixelContext(func() {
-			gl.PointSize(5.0)
-			gl.Begin(gl.POINTS)
-			gl.Color3d(1.0, 1.0, 1.0)
-			gl.Vertex2d(10, 10)
-			gl.End()
+			x, y := glfw.MousePos()
+			_, h := glfw.WindowSize()
+			_, ry := RelativeMousePos()
+			fx := float32(x)
+			fy := float32(y) - float32(h)/2.0
+			if ry < 0.5 {
+				fy += 100.0
+			} else {
+			}
+			drawString(fx, fy, 12, fmt.Sprintf("%dHz", FreqFromMousePos()))
 		})
 
 		// done
@@ -311,13 +335,20 @@ func onResize(w int, h int) {
 	gl.LoadIdentity()
 	gl.Viewport(0, 0, w, h)
 	gl.Ortho(0, float64(w), float64(h), 0, -1.0, 1.0)
-	gl.ClearColor(1, 1, 1, 0)
+	gl.ClearColor(0, 0, 0, 0)
 	gl.Clear(gl.COLOR_BUFFER_BIT)
 	gl.LoadIdentity()
 }
 
 func onMouseBtn(button, state int) {
 	//	mouse[button] = state
+	x, y := RelativeMousePos()
+	fmt.Printf("onMouseBtn %d %d / x:%f, y:%f / %dHz\n", button, state, x, y, FreqFromMousePos())
+
+	switch {
+	case button == glfw.MouseLeft && state == glfw.KeyPress:
+		fmt.Println("clicked")
+	}
 }
 
 func onKey(key, state int) {
@@ -329,51 +360,47 @@ func onKey(key, state int) {
 	}
 }
 
-//package main
-//
-//import (
-//    "fmt"
-//)
-//
-//func sum(a int, b int) int {
-//    return a + b
-//}
-//
-//func main() {
-//    fmt.Println(sum(1, 2))
-//}
-//
-//import (
-//    "fmt"
-//    "time"
-//)
-//
-//func throttle(fun func(), wait time.Duration) func() {
-//    var cancelCh chan bool = nil
-//    return func() {
-//        if cancelCh != nil {
-//            cancelCh <- true
-//        }
-//        cancelCh = make(chan bool)
-//        go func() {
-//            select {
-//            case <- time.After(wait):
-//                fun();
-//            case <- cancelCh:
-//                cancelCh = nil
-//            }
-//        } ()
-//    }
-//}
-//
-//func main() {
-//    fun := throttle(func () {
-//        fmt.Println("Hello, World")
-//    }, 1000 * time.Millisecond);
-//
-//    fun()
-//    fun()
-//    fun()
-//
-//    time.Sleep(5 * time.Second)
-//}
+func loadFont(file string, scale int32) (*gltext.Font, error) {
+	fd, err := os.Open(file)
+	if err != nil {
+		return nil, err
+	}
+
+	defer fd.Close()
+
+	return gltext.LoadTruetype(fd, scale, 32, 127, gltext.LeftToRight)
+}
+
+func drawString(x, y float32, size int, str string) error {
+	font := fonts[size-12]
+	if font == nil {
+		return errors.New("undefined size")
+	}
+
+	gl.Enable(gl.BLEND)
+
+	_, h := font.GlyphBounds()
+	y = y + float32(size*h)
+	sw, sh := font.Metrics(str)
+	gl.Color4f(0.0, 0.0, 0.0, 0.7)
+	gl.Rectf(x-5, y, x+float32(sw)+5, y+float32(sh))
+
+	gl.Color3d(1.0, 1.0, 1.0)
+	err := font.Printf(x, y, str)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func RelativeMousePos() (float32, float32) {
+	x, y := glfw.MousePos()
+	w, h := glfw.WindowSize()
+	return float32(x)/float32(w) - 0.5, float32(y) / float32(h)
+}
+
+func FreqFromMousePos() int {
+	x, _ := RelativeMousePos()
+	return int(x * float32(sampleRate))
+}
