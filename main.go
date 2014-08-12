@@ -150,10 +150,9 @@ func main() {
 	fftResultChan := listen(fftSize)
 
 	buffer := ring.New(historySize)
-	buffer.Value = make([]float64, fftBinSize)
+	buffer.Value = make([]byte, fftBinSize*3)
 	for p := buffer.Next(); p != buffer; p = p.Next() {
-		v := make([]float64, fftBinSize)
-		p.Value = v
+		p.Value = make([]byte, fftBinSize*3)
 	}
 
 	historyBitmap := make([]byte, fftBinSize*historySize*3)
@@ -162,69 +161,70 @@ func main() {
 
 	for running && glfw.WindowParam(glfw.Opened) == 1 {
 		fftResult := <-fftResultChan
-		copy(buffer.Value.([]float64), fftResult)
+		current := buffer.Value.([]byte)
 		buffer = buffer.Prev()
+
+		for i := 0; i < fftBinSize; i++ {
+			p := fftResult[i] / dynamicRange
+			if p < 0 {
+				p = 0
+			}
+
+			r := 0.0
+			g := 0.0
+			b := 0.0
+
+			switch {
+			case p > 5.0/6.0:
+				// yellow -> red
+				p = (p - (5 / 6.0)) / (1 / 6.0)
+				r = 255
+				g = 255 * p
+				b = 255 * p
+			case p > 4.0/6.0:
+				// yellow -> red
+				p = (p - (4 / 6.0)) / (1 / 6.0)
+				r = 255
+				g = 255 * (1 - p)
+				b = 0
+			case p > 3.0/6.0:
+				// green -> yellow
+				p = (p - (3 / 6.0)) / (1 / 6.0)
+				r = 255 * p
+				g = 255
+				b = 0
+			case p > 2.0/6.0:
+				// light blue -> green
+				p = (p - (2 / 6.0)) / (1 / 6.0)
+				r = 0
+				g = 255
+				b = 255 * (1 - p)
+			case p > 1.0/6.0:
+				// blue -> light blue
+				p = (p - (1 / 6.0)) / (1 / 6.0)
+				r = 0
+				g = 255 * p
+				b = 255
+			case p > 0:
+				// black -> blue
+				p = p / (1 / 6.0)
+				r = 0
+				g = 0
+				b = 255 * p
+			}
+
+			current[i*3] = byte(r)
+			current[i*3+1] = byte(g)
+			current[i*3+2] = byte(b)
+		}
 
 		gl.Clear(gl.COLOR_BUFFER_BIT)
 
 		// draw fft history
 		i := 0
 		buffer.Do(func(v interface{}) {
-			result := v.([]float64)
-			for x := 0; x < fftBinSize; x++ {
-				p := result[x] / dynamicRange
-				if p < 0 {
-					p = 0
-				}
-
-				r := 0.0
-				g := 0.0
-				b := 0.0
-
-				switch {
-				case p > 5.0/6.0:
-					// yellow -> red
-					p = (p - (5 / 6.0)) / (1 / 6.0)
-					r = 255
-					g = 255 * p
-					b = 255 * p
-				case p > 4.0/6.0:
-					// yellow -> red
-					p = (p - (4 / 6.0)) / (1 / 6.0)
-					r = 255
-					g = 255 * (1 - p)
-					b = 0
-				case p > 3.0/6.0:
-					// green -> yellow
-					p = (p - (3 / 6.0)) / (1 / 6.0)
-					r = 255 * p
-					g = 255
-					b = 0
-				case p > 2.0/6.0:
-					// light blue -> green
-					p = (p - (2 / 6.0)) / (1 / 6.0)
-					r = 0
-					g = 255
-					b = 255 * (1 - p)
-				case p > 1.0/6.0:
-					// blue -> light blue
-					p = (p - (1 / 6.0)) / (1 / 6.0)
-					r = 0
-					g = 255 * p
-					b = 255
-				case p > 0:
-					// black -> blue
-					p = p / (1 / 6.0)
-					r = 0
-					g = 0
-					b = 255 * p
-				}
-
-				historyBitmap[i] = byte(r)
-				historyBitmap[i+1] = byte(g)
-				historyBitmap[i+2] = byte(b)
-				i += 3
-			}
+			copy(historyBitmap[i:], v.([]byte))
+			i += fftBinSize * 3
 		})
 
 		gl.PushMatrix()
