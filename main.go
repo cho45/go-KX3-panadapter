@@ -127,8 +127,8 @@ func main() {
 
 	defer glfw.Terminate()
 
-	width := 1024
-	height := 500
+	width := 800
+	height := 600
 	historySize := 500
 	fftSize := 2048
 	fftBinSize := fftSize
@@ -162,7 +162,6 @@ func main() {
 	for running && glfw.WindowParam(glfw.Opened) == 1 {
 		fftResult := <-fftResultChan
 		current := buffer.Value.([]byte)
-		buffer = buffer.Prev()
 
 		for i := 0; i < fftBinSize; i++ {
 			p := fftResult[i] / dynamicRange
@@ -218,6 +217,7 @@ func main() {
 			current[i*3+2] = byte(b)
 		}
 
+		gl.ClearColor(0, 0, 0, 1)
 		gl.Clear(gl.COLOR_BUFFER_BIT)
 
 		// draw fft history
@@ -237,9 +237,9 @@ func main() {
 		gl.Begin(gl.QUADS)
 		gl.Color3f(1.0, 1.0, 1.0)
 		gl.TexCoord2d(0, 0)
-		gl.Vertex2d(0, 0)
+		gl.Vertex2d(0, 0.5)
 		gl.TexCoord2d(1, 0)
-		gl.Vertex2d(2, 0)
+		gl.Vertex2d(2, 0.5)
 		gl.TexCoord2d(1, 1)
 		gl.Vertex2d(2, 2)
 		gl.TexCoord2d(0, 1)
@@ -254,7 +254,7 @@ func main() {
 		// draw fft
 		gl.PushMatrix()
 		gl.Translatef(-1.0, -1.0, 0.0)
-		gl.Color3f(1.0, 0.0, 0.0)
+		gl.Color3f(0.2, 0.2, 0.7)
 		gl.Begin(gl.LINE_STRIP)
 		unit := 2.0 / float64(len(fftResult))
 		for i := 0; i < len(fftResult); i++ {
@@ -263,7 +263,7 @@ func main() {
 			if p < 0 {
 				p = 0
 			}
-			gl.Vertex2d(x, p)
+			gl.Vertex2d(x, p*0.5)
 		}
 		gl.End()
 		gl.PopMatrix()
@@ -279,6 +279,8 @@ func main() {
 
 		// done
 		glfw.SwapBuffers()
+
+		buffer = buffer.Prev()
 	}
 }
 
