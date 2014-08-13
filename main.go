@@ -124,12 +124,12 @@ func listen(fftSize int) chan []float64 {
 
 func main() {
 	var err error
-	width := 800
+	width := 1024
 	height := 600
 	historySize := 500
 	fftSize := 2048
 	fftBinSize := fftSize
-	dynamicRange := 100.0
+	dynamicRange := 80.0
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
 	running = true
