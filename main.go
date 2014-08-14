@@ -1,4 +1,4 @@
-//#!go run
+//#!go build github.com/cho45/go-KX3-panadapter/kx3hq && go run
 
 package main
 
@@ -6,10 +6,14 @@ import (
 	"container/ring"
 	"errors"
 	"fmt"
+	"github.com/cho45/go-KX3-panadapter/kx3hq"
 	"log"
 	"math"
 	"os"
+	"regexp"
 	"runtime"
+	"strconv"
+	"time"
 
 	"code.google.com/p/portaudio-go/portaudio"
 	"github.com/andrebq/gas"
@@ -17,17 +21,27 @@ import (
 	"github.com/go-gl/glfw"
 	"github.com/go-gl/gltext"
 	"github.com/mjibson/go-dsp/fft"
+	"github.com/mjibson/go-dsp/window"
 )
 
 var (
 	running    bool
 	sampleRate float64
 	fonts      [16]*gltext.Font
+
+	fftSize int
+	buffer  *ring.Ring
+
+	kx3          *kx3hq.KX3Controller
+	rigFrequency float64
+	rigMode      string
 )
 
 func listen(fftSize int) chan []float64 {
 	ch := make(chan []float64, 1)
-	buf := make([]complex128, fftSize)
+	phaseI := make([]float64, fftSize)
+	phaseQ := make([]float64, fftSize)
+	complexIQ := make([]complex128, fftSize)
 	fftResult := make([]float64, fftSize)
 	go func() {
 		portaudio.Initialize()
@@ -99,20 +113,30 @@ func listen(fftSize int) chan []float64 {
 			}
 
 			for i := 0; i < len(in); i += 2 {
-				buf[i/2] = complex(float64(in[i])/0x1000000, float64(in[i+1])/0x1000000)
+				// left
+				phaseI[i/2] = float64(in[i]) / 0x1000000
+				// right
+				phaseQ[i/2] = float64(in[i+1]) / 0x1000000
 			}
 
-			// window.Apply(buf, window.Hamming)
-			result := fft.FFT(buf)
+			windowFunc := window.Hamming
+			window.Apply(phaseI, windowFunc)
+			window.Apply(phaseQ, windowFunc)
+
+			for i := 0; i < fftSize; i++ {
+				complexIQ[i] = complex(phaseI[i], phaseQ[i])
+			}
+
+			result := fft.FFT(complexIQ)
 			// real
-			for i := 0; i < len(buf)/2; i++ {
+			for i := 0; i < len(complexIQ)/2; i++ {
 				power := math.Sqrt(real(result[i])*real(result[i]) + imag(result[i])*imag(result[i]))
-				fftResult[i+len(buf)/2] = 20 * math.Log10(power)
+				fftResult[i+len(complexIQ)/2] = 20 * math.Log10(power)
 			}
 			// imag
-			for i := len(buf) / 2; i < len(buf); i++ {
+			for i := len(complexIQ) / 2; i < len(complexIQ); i++ {
 				power := math.Sqrt(real(result[i])*real(result[i]) + imag(result[i])*imag(result[i]))
-				fftResult[i-len(buf)/2] = 20 * math.Log10(power)
+				fftResult[i-len(complexIQ)/2] = 20 * math.Log10(power)
 			}
 
 			ch <- fftResult
@@ -124,10 +148,51 @@ func listen(fftSize int) chan []float64 {
 
 func main() {
 	var err error
-	width := 1024
+
+	go func() {
+		kx3 = &kx3hq.KX3Controller{}
+		if err := kx3.Open("/dev/tty.usbserial-A402PY11", 38400); err != nil {
+			panic(err)
+		}
+		log.Printf("Connected")
+		defer kx3.Close()
+		var mode string
+		var err error
+		var freqI string
+		var freq float64
+		var match bool
+		for {
+			mode, err = kx3.Command("MD;")
+			if err != nil {
+				log.Printf("Error on command: %s", err)
+			}
+			match, err = regexp.MatchString("^MD.;", mode)
+			if match {
+				rigMode = mode[2:3]
+			}
+
+			freqI, err = kx3.Command("FA;")
+			if err != nil {
+				log.Printf("Error on command: %s", err)
+			}
+			match, err = regexp.MatchString("^FA", freqI)
+			if match {
+				freq, err = strconv.ParseFloat(freqI[2:13], 64)
+				ShiftFFTHistory(freq - rigFrequency)
+				rigFrequency = freq
+				if err != nil {
+					panic(err)
+				}
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+	}()
+
+	fftSize = 2048
+
 	height := 600
+	width := int(float32(height) * 2.35) // CinemaScope
 	historySize := 500
-	fftSize := 2048
 	fftBinSize := fftSize
 	dynamicRange := 80.0
 
@@ -154,7 +219,7 @@ func main() {
 
 	fftResultChan := listen(fftSize)
 
-	buffer := ring.New(historySize)
+	buffer = ring.New(historySize)
 	buffer.Value = make([]byte, fftBinSize*3)
 	for p := buffer.Next(); p != buffer; p = p.Next() {
 		p.Value = make([]byte, fftBinSize*3)
@@ -236,7 +301,6 @@ func main() {
 			current[i*3+2] = byte(b)
 		}
 
-		gl.ClearColor(0, 0, 0, 0)
 		gl.Clear(gl.COLOR_BUFFER_BIT)
 
 		// draw fft history
@@ -266,9 +330,25 @@ func main() {
 		gl.End()
 		texture.Unbind(gl.TEXTURE_2D)
 
-		//		gl.PixelZoom(float32(width)/float32(fftBinSize), float32(height)/float32(historySize))
-		//		gl.DrawPixels(fftBinSize, historySize, gl.RGB, gl.UNSIGNED_BYTE, historyBitmap)
 		gl.PopMatrix()
+
+		// draw grid
+		withPixelContext(func() {
+			w, h := GetWindowSizeF()
+			gl.Begin(gl.LINES)
+			for freq := 0.0; freq < sampleRate/2; freq += 1000.0 {
+				if int(freq)%5000 == 0 {
+					gl.Color4f(1.0, 1.0, 1.0, 0.3)
+				} else {
+					gl.Color4f(1.0, 1.0, 1.0, 0.1)
+				}
+				gl.Vertex2f(w/2.0+w*float32(freq/sampleRate), h*0.75)
+				gl.Vertex2f(w/2.0+w*float32(freq/sampleRate), h)
+				gl.Vertex2f(w/2.0-w*float32(freq/sampleRate), h*0.75)
+				gl.Vertex2f(w/2.0-w*float32(freq/sampleRate), h)
+			}
+			gl.End()
+		})
 
 		// draw fft
 		gl.PushMatrix()
@@ -289,16 +369,28 @@ func main() {
 
 		// draw Text
 		withPixelContext(func() {
+			// Frequency labels
+			w, h := GetWindowSizeF()
+			for freq := 0.0; freq < sampleRate/2; freq += 5000.0 {
+				drawString(w/2.0+w*float32(freq/sampleRate), h*0.75, 12, fmt.Sprintf("%fMHz", (rigFrequency+freq)/1000/1000))
+				drawString(w/2.0-w*float32(freq/sampleRate), h*0.75, 12, fmt.Sprintf("%fMHz", (rigFrequency-freq)/1000/1000))
+			}
+
+			//			gl.Color4f(1, 1, 1, 1)
+			//			gl.Rectd(10, 10, 100, 100)
+			//			gl.Rectd(-10, -10, 10, 10)
+
+			// Mouse
 			x, y := glfw.MousePos()
-			_, h := glfw.WindowSize()
 			_, ry := RelativeMousePos()
 			fx := float32(x)
-			fy := float32(y) - float32(h)/2.0
+			fy := float32(y)
 			if ry < 0.5 {
-				fy += 100.0
+				fy += 50.0
 			} else {
+				fy -= 50.0
 			}
-			drawString(fx, fy, 12, fmt.Sprintf("%dHz", FreqFromMousePos()))
+			drawString(fx, fy, 12, fmt.Sprintf("%fMHz", FreqFromMousePos()/1000/1000))
 		})
 
 		// done
@@ -343,11 +435,21 @@ func onResize(w int, h int) {
 func onMouseBtn(button, state int) {
 	//	mouse[button] = state
 	x, y := RelativeMousePos()
-	fmt.Printf("onMouseBtn %d %d / x:%f, y:%f / %dHz\n", button, state, x, y, FreqFromMousePos())
+	fmt.Printf("onMouseBtn %d %d / x:%f, y:%f / %fHz\n", button, state, x, y, FreqFromMousePos())
 
 	switch {
 	case button == glfw.MouseLeft && state == glfw.KeyPress:
-		fmt.Println("clicked")
+		freq := FreqFromMousePos()
+		switch rigMode {
+		case kx3hq.MODE_CW_REV:
+			freq -= 600
+		case kx3hq.MODE_CW:
+			freq += 600
+		default:
+		}
+
+		ret, err := kx3.Command(fmt.Sprintf("FA%011d;FA;", int(freq)))
+		fmt.Printf("change: %s, %s", ret, err)
 	}
 }
 
@@ -379,28 +481,61 @@ func drawString(x, y float32, size int, str string) error {
 
 	gl.Enable(gl.BLEND)
 
-	_, h := font.GlyphBounds()
-	y = y + float32(size*h)
 	sw, sh := font.Metrics(str)
 	gl.Color4f(0.0, 0.0, 0.0, 0.7)
 	gl.Rectf(x-5, y, x+float32(sw)+5, y+float32(sh))
 
 	gl.Color3d(1.0, 1.0, 1.0)
-	err := font.Printf(x, y, str)
+	err := font.Printf(x, y, "%s", str)
 	if err != nil {
 		return err
 	}
+	// font.Printf does not unbind texture
+	gl.Disable(gl.TEXTURE_2D)
 
 	return nil
 }
 
 func RelativeMousePos() (float32, float32) {
 	x, y := glfw.MousePos()
-	w, h := glfw.WindowSize()
+	w, h := GetWindowSizeF()
 	return float32(x)/float32(w) - 0.5, float32(y) / float32(h)
 }
 
-func FreqFromMousePos() int {
+func GetWindowSizeF() (float32, float32) {
+	w, h := glfw.WindowSize()
+	return float32(w), float32(h)
+}
+
+func FreqFromMousePos() float64 {
 	x, _ := RelativeMousePos()
-	return int(x * float32(sampleRate))
+	return rigFrequency + float64(x*float32(sampleRate))
+}
+
+func ShiftFFTHistory (freqDiff float64) {
+	if freqDiff == 0.0 {
+		return
+	}
+
+	freqRes := sampleRate / float64(fftSize)
+	shift := int(freqDiff/freqRes) * 3
+	// log.Printf("shift %d", shift)
+	buffer.Do(func(v interface{}) {
+		bytes := v.([]byte)
+		if shift < 0 {
+			for i := len(bytes)-1; -shift < i; i-- {
+				bytes[i] = bytes[i+shift]
+			}
+			for i := 0; i < -shift; i++ {
+				bytes[i] = 0
+			}
+		} else {
+			for i := 0; i < len(bytes)-shift; i++ {
+				bytes[i] = bytes[i+shift]
+			}
+			for i := len(bytes) - shift; i < len(bytes); i++ {
+				bytes[i] = 0
+			}
+		}
+	})
 }
