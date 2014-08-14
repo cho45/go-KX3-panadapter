@@ -150,41 +150,49 @@ func main() {
 	var err error
 
 	go func() {
-		kx3 = &kx3hq.KX3Controller{}
-		if err := kx3.Open("/dev/tty.usbserial-A402PY11", 38400); err != nil {
-			panic(err)
-		}
-		log.Printf("Connected")
-		defer kx3.Close()
-		var mode string
-		var err error
-		var freqI string
-		var freq float64
-		var match bool
-		for {
-			mode, err = kx3.Command("MD;")
-			if err != nil {
-				log.Printf("Error on command: %s", err)
+		connect := func () {
+			kx3 = &kx3hq.KX3Controller{}
+			if err := kx3.Open("/dev/tty.usbserial-A402PY11", 38400); err != nil {
+				log.Printf("Error on Open: %s", err)
+				return
 			}
-			match, err = regexp.MatchString("^MD.;", mode)
-			if match {
-				rigMode = mode[2:3]
-			}
-
-			freqI, err = kx3.Command("FA;")
-			if err != nil {
-				log.Printf("Error on command: %s", err)
-			}
-			match, err = regexp.MatchString("^FA", freqI)
-			if match {
-				freq, err = strconv.ParseFloat(freqI[2:13], 64)
-				ShiftFFTHistory(freq - rigFrequency)
-				rigFrequency = freq
+			log.Printf("Connected")
+			defer kx3.Close()
+			var mode string
+			var err error
+			var freqI string
+			var freq float64
+			var match bool
+			for {
+				mode, err = kx3.Command("MD;")
 				if err != nil {
-					panic(err)
+					log.Printf("Error on command: %s", err)
+					return
 				}
+				match, err = regexp.MatchString("^MD.;", mode)
+				if match {
+					rigMode = mode[2:3]
+				}
+
+				freqI, err = kx3.Command("FA;")
+				if err != nil {
+					log.Printf("Error on command: %s", err)
+					return
+				}
+				match, err = regexp.MatchString("^FA", freqI)
+				if match {
+					freq, err = strconv.ParseFloat(freqI[2:13], 64)
+					ShiftFFTHistory(freq - rigFrequency)
+					rigFrequency = freq
+				}
+				time.Sleep(100 * time.Millisecond)
 			}
-			time.Sleep(100 * time.Millisecond)
+		}
+
+		for {
+			connect()
+			log.Printf("Reconnect...")
+			time.Sleep(3000 * time.Millisecond)
 		}
 	}()
 
@@ -512,7 +520,7 @@ func FreqFromMousePos() float64 {
 	return rigFrequency + float64(x*float32(sampleRate))
 }
 
-func ShiftFFTHistory (freqDiff float64) {
+func ShiftFFTHistory(freqDiff float64) {
 	if freqDiff == 0.0 {
 		return
 	}
@@ -523,7 +531,7 @@ func ShiftFFTHistory (freqDiff float64) {
 	buffer.Do(func(v interface{}) {
 		bytes := v.([]byte)
 		if shift < 0 {
-			for i := len(bytes)-1; -shift < i; i-- {
+			for i := len(bytes) - 1; -shift < i; i-- {
 				bytes[i] = bytes[i+shift]
 			}
 			for i := 0; i < -shift; i++ {
