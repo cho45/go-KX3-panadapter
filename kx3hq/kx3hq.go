@@ -30,30 +30,37 @@ const MODE_DATA_REV = "8"
 //	"9": "DATA-REV",
 //}
 
+const (
+	STATUS_INIT = iota
+	STATUS_OPENED
+	STATUS_CLOSED
+)
+
 type KX3Controller struct {
 	port     io.ReadWriteCloser
 	resultCh chan string
 	reader   *bufio.Reader
 	mutex    *sync.Mutex
+	status   int
 }
 
 func (s *KX3Controller) Open(name string, baudrate int) error {
+	s.status = STATUS_INIT
 	port, err := serial.OpenPort(&serial.Config{
 		Name: name,
 		Baud: baudrate,
 	})
 	if err != nil {
+		s.status = STATUS_CLOSED
 		return err
 	}
 	s.port = port
 	s.resultCh = make(chan string)
 	s.mutex = &sync.Mutex{}
+	s.status = STATUS_OPENED
 
 	go func() {
 		reader := bufio.NewReaderSize(s.port, 4096)
-		// read go routine
-		defer close(s.resultCh)
-		defer s.port.Close()
 		for {
 			command, err := reader.ReadString(';')
 			if err != nil {
@@ -95,5 +102,14 @@ clear:
 }
 
 func (s *KX3Controller) Close() error {
-	return s.port.Close()
+	log.Println("KX3Cotroller#Close")
+	if s.status != STATUS_CLOSED {
+		s.status = STATUS_CLOSED
+		close(s.resultCh)
+		err := s.port.Close()
+		log.Printf("Closed with: %s", err)
+		return err
+	} else {
+		return errors.New("already closed")
+	}
 }

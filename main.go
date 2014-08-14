@@ -183,7 +183,8 @@ func main() {
 				mode, err = kx3.Command("MD;")
 				if err != nil {
 					log.Printf("Error on command: %s", err)
-					return
+					time.Sleep(1000 * time.Millisecond)
+					continue
 				}
 				match, err = regexp.MatchString("^MD.;", mode)
 				if match {
@@ -193,7 +194,8 @@ func main() {
 				freqI, err = kx3.Command("FA;")
 				if err != nil {
 					log.Printf("Error on command: %s", err)
-					return
+					time.Sleep(1000 * time.Millisecond)
+					continue
 				}
 				match, err = regexp.MatchString("^FA", freqI)
 				if match {
