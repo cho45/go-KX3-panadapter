@@ -49,45 +49,45 @@ func listen(fftSize int) chan []float64 {
 		portaudio.Initialize()
 		defer portaudio.Terminate()
 
-		//		devices, err := portaudio.Devices()
-		//		var device *portaudio.DeviceInfo
-		//		for _, deviceInfo := range devices {
-		//			if deviceInfo.MaxInputChannels >= 2 {
-		//				device = deviceInfo
-		//				break
-		//			}
-		//		}
-		//
-		//		if device != nil {
-		//			log.Printf("Use %v", device)
-		//		} else {
-		//			log.Fatalf("No devices found with stereo input")
-		//			for _, deviceInfo := range devices {
-		//				log.Fatalf("%v", deviceInfo)
-		//			}
-		//		}
-		//
-		//		in := make([]int32, fftSize)
-		//
-		//		stream, err := portaudio.OpenStream(portaudio.StreamParameters{
-		//			Input: portaudio.StreamDeviceParameters{
-		//				Device:   device,
-		//				Channels: 2,
-		//				Latency:  device.DefaultHighInputLatency,
-		//			},
-		//			Output: portaudio.StreamDeviceParameters{
-		//				Device:   nil,
-		//				Channels: 0,
-		//				Latency:  0,
-		//			},
-		//			SampleRate:      device.DefaultSampleRate,
-		//			FramesPerBuffer: len(in),
-		//			Flags:           portaudio.NoFlag,
-		//		}, in)
-		//		if err != nil {
-		//			panic(err)
-		//		}
-		//		defer stream.Close()
+		in := make([]int32, fftSize)
+
+//		devices, err := portaudio.Devices()
+//		var device *portaudio.DeviceInfo
+//		for _, deviceInfo := range devices {
+//			if deviceInfo.MaxInputChannels >= 2 {
+//				device = deviceInfo
+//				break
+//			}
+//		}
+//
+//		if device != nil {
+//			log.Printf("Use %v", device)
+//		} else {
+//			log.Fatalf("No devices found with stereo input")
+//			for _, deviceInfo := range devices {
+//				log.Fatalf("%v", deviceInfo)
+//			}
+//		}
+//
+//		stream, err := portaudio.OpenStream(portaudio.StreamParameters{
+//			Input: portaudio.StreamDeviceParameters{
+//				Device:   device,
+//				Channels: 2,
+//				Latency:  device.DefaultHighInputLatency,
+//			},
+//			Output: portaudio.StreamDeviceParameters{
+//				Device:   nil,
+//				Channels: 0,
+//				Latency:  0,
+//			},
+//			SampleRate:      device.DefaultSampleRate,
+//			FramesPerBuffer: len(in),
+//			Flags:           portaudio.NoFlag,
+//		}, in)
+//		if err != nil {
+//			panic(err)
+//		}
+//		defer stream.Close()
 
 		device, err := portaudio.DefaultInputDevice()
 		if err != nil {
@@ -96,7 +96,6 @@ func listen(fftSize int) chan []float64 {
 
 		sampleRate = device.DefaultSampleRate
 
-		in := make([]int32, fftSize)
 		stream, err := portaudio.OpenDefaultStream(2, 0, device.DefaultSampleRate, len(in), in)
 		if err != nil {
 			panic(err)
@@ -533,25 +532,35 @@ func ShiftFFTHistory(freqDiff float64) {
 		return
 	}
 
-	freqRes := sampleRate / float64(fftSize)
-	shift := int(freqDiff/freqRes) * 3
-	// log.Printf("shift %d", shift)
-	buffer.Do(func(v interface{}) {
-		bytes := v.([]byte)
-		if shift < 0 {
-			for i := len(bytes) - 1; -shift < i; i-- {
-				bytes[i] = bytes[i+shift]
+	if math.Abs(freqDiff) < sampleRate {
+		freqRes := sampleRate / float64(fftSize)
+		shift := int(freqDiff/freqRes) * 3
+		shift *= 3 // rgb
+		// log.Printf("shift %d", shift)
+		buffer.Do(func(v interface{}) {
+			bytes := v.([]byte)
+			if shift < 0 {
+				for i := len(bytes) - 1; -shift < i; i-- {
+					bytes[i] = bytes[i+shift]
+				}
+				for i := 0; i < -shift; i++ {
+					bytes[i] = 0
+				}
+			} else {
+				for i := 0; i < len(bytes)-shift; i++ {
+					bytes[i] = bytes[i+shift]
+				}
+				for i := len(bytes) - shift; i < len(bytes); i++ {
+					bytes[i] = 0
+				}
 			}
-			for i := 0; i < -shift; i++ {
+		})
+	} else {
+		buffer.Do(func(v interface{}) {
+			bytes := v.([]byte)
+			for i := 0; i < len(bytes); i++ {
 				bytes[i] = 0
 			}
-		} else {
-			for i := 0; i < len(bytes)-shift; i++ {
-				bytes[i] = bytes[i+shift]
-			}
-			for i := len(bytes) - shift; i < len(bytes); i++ {
-				bytes[i] = 0
-			}
-		}
-	})
+		})
+	}
 }
