@@ -1,4 +1,4 @@
-//#!go build github.com/cho45/go-KX3-panadapter/kx3hq && go run
+//#!go build github.com/cho45/go-KX3-panadapter/{kx3hq,panadapter} && go run
 
 package main
 
@@ -6,7 +6,6 @@ import (
 	"container/ring"
 	"errors"
 	"fmt"
-	"github.com/cho45/go-KX3-panadapter/kx3hq"
 	"log"
 	"math"
 	"os"
@@ -17,6 +16,8 @@ import (
 
 	"code.google.com/p/portaudio-go/portaudio"
 	"github.com/andrebq/gas"
+	"github.com/cho45/go-KX3-panadapter/kx3hq"
+	"github.com/cho45/go-KX3-panadapter/panadapter"
 	"github.com/go-gl/gl"
 	"github.com/go-gl/glfw"
 	"github.com/go-gl/gltext"
@@ -25,6 +26,7 @@ import (
 )
 
 var (
+	Config     *panadapter.Config
 	running    bool
 	sampleRate float64
 	fonts      [16]*gltext.Font
@@ -149,10 +151,25 @@ func listen(fftSize int) chan []float64 {
 func main() {
 	var err error
 
+	runtime.GOMAXPROCS(runtime.NumCPU())
+
+	Config, err = panadapter.ReadConfig("./config.json")
+	if err != nil {
+		fmt.Printf("Error on reading config: %s", err)
+		os.Exit(255)
+	}
+
+	fftSize = Config.FftSize
+	height := Config.Window.Height
+	width := Config.Window.Width
+	historySize := Config.HistorySize
+	fftBinSize := fftSize
+	dynamicRange := 80.0
+
 	go func() {
-		connect := func () {
+		connect := func() {
 			kx3 = &kx3hq.KX3Controller{}
-			if err := kx3.Open("/dev/tty.usbserial-A402PY11", 38400); err != nil {
+			if err := kx3.Open(Config.Port.Name, Config.Port.Baudrate); err != nil {
 				log.Printf("Error on Open: %s", err)
 				return
 			}
@@ -196,15 +213,6 @@ func main() {
 		}
 	}()
 
-	fftSize = 2048
-
-	height := 600
-	width := int(float32(height) * 2.35) // CinemaScope
-	historySize := 500
-	fftBinSize := fftSize
-	dynamicRange := 80.0
-
-	runtime.GOMAXPROCS(runtime.NumCPU())
 	running = true
 
 	if err = glfw.Init(); err != nil {

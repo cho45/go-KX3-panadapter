@@ -1,0 +1,12 @@
+{
+	"port" : {
+		"name" : "/dev/tty.usbserial-A402PY11",
+		"baudrate" : 38400
+	},
+	"window" : {
+		"width" : 1410,
+		"height" : 600
+	},
+	"historySize" : 500,
+	"fftSize" : 2048
+}
