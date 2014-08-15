@@ -6,7 +6,6 @@ import (
 	"github.com/tarm/goserial"
 	"io"
 	"log"
-	"sync"
 	"time"
 )
 
@@ -19,17 +18,6 @@ const MODE_DATA = "6"
 const MODE_CW_REV = "7"
 const MODE_DATA_REV = "8"
 
-//const MODE = map[string]string{
-//	"1": "LSB",
-//	"2": "USB",
-//	"3": "CW",
-//	"4": "FM",
-//	"5": "AM",
-//	"6": "DATA",
-//	"7": "CW-REV",
-//	"9": "DATA-REV",
-//}
-
 const (
 	STATUS_INIT = iota
 	STATUS_OPENED
@@ -37,11 +25,12 @@ const (
 )
 
 type KX3Controller struct {
-	port     io.ReadWriteCloser
-	resultCh chan string
-	reader   *bufio.Reader
-	mutex    *sync.Mutex
-	status   int
+	port       io.ReadWriteCloser
+	resultCh   chan string
+	writeCh    chan string
+	writeResCh chan error
+	reader     *bufio.Reader
+	status     int
 }
 
 func (s *KX3Controller) Open(name string, baudrate int) error {
@@ -56,7 +45,8 @@ func (s *KX3Controller) Open(name string, baudrate int) error {
 	}
 	s.port = port
 	s.resultCh = make(chan string)
-	s.mutex = &sync.Mutex{}
+	s.writeCh = make(chan string, 1)
+	s.writeResCh = make(chan error, 1)
 	s.status = STATUS_OPENED
 
 	go func() {
@@ -74,18 +64,24 @@ func (s *KX3Controller) Open(name string, baudrate int) error {
 		}
 		log.Println("reader thread is done")
 	}()
+
+	go func() {
+		for s.status == STATUS_OPENED {
+			command := <-s.writeCh
+			_, err = s.port.Write([]byte(command))
+			s.writeResCh <- err
+		}
+	}()
 	return nil
 }
 
 // Block until response
 // Command("FA;")
-// Command("FA00007100000;FA;") 
+// Command("FA00007100000;FA;")
 func (s *KX3Controller) Command(command string) (string, error) {
 	if s.status != STATUS_OPENED {
 		return "", errors.New("invalid status")
 	}
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
 clear:
 	for {
 		select {
@@ -94,7 +90,7 @@ clear:
 			break clear
 		}
 	}
-	_, err := s.port.Write([]byte(command))
+	err := s.Send(command)
 	if err != nil {
 		return "", err
 	}
@@ -105,6 +101,15 @@ clear:
 	case <-time.After(1000 * time.Millisecond):
 		return "", errors.New("timeout")
 	}
+}
+
+func (s *KX3Controller) Send(command string) error {
+	s.writeCh <- command
+	err := <-s.writeResCh
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *KX3Controller) Close() error {
@@ -119,3 +124,4 @@ func (s *KX3Controller) Close() error {
 		return errors.New("already closed")
 	}
 }
+
