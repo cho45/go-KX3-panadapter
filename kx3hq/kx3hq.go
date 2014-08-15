@@ -81,6 +81,9 @@ func (s *KX3Controller) Open(name string, baudrate int) error {
 // Command("FA;")
 // Command("FA00007100000;FA;") 
 func (s *KX3Controller) Command(command string) (string, error) {
+	if s.status != STATUS_OPENED {
+		return "", errors.New("invalid status")
+	}
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 clear:
