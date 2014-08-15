@@ -22,11 +22,11 @@ import (
 )
 
 var (
-	config     *Config
-	running    bool
-	sampleRate float64
+	config       *Config
+	running      bool
+	sampleRate   float64
 	dynamicRange float64
-	fonts      [16]*gltext.Font
+	fonts        [16]*gltext.Font
 
 	fftSize int
 	buffer  *ring.Ring
@@ -34,6 +34,11 @@ var (
 	kx3          *kx3hq.KX3Controller
 	rigFrequency float64
 	rigMode      string
+)
+
+var (
+	RE_RES_MD = regexp.MustCompile("^MD([0-9]);$")
+	RE_RES_FA = regexp.MustCompile("^FA([0-9]{11});$")
 )
 
 func listen(fftSize int) (chan []float64, chan error) {
@@ -160,7 +165,7 @@ func listen(fftSize int) (chan []float64, chan error) {
 	return ch, errCh
 }
 
-func Serial () {
+func Serial() {
 	connect := func() {
 		kx3 = &kx3hq.KX3Controller{}
 		if err := kx3.Open(config.Port.Name, config.Port.Baudrate); err != nil {
@@ -169,36 +174,29 @@ func Serial () {
 		}
 		log.Printf("Connected")
 		defer kx3.Close()
-		var mode string
 		var err error
-		var freqI string
 		var freq float64
-		var match bool
+		var matched []string
 		for {
-			mode, err = kx3.Command("MD;")
+			matched, err = kx3.Command("MD;", RE_RES_MD)
 			if err != nil {
 				// timeout when KX3 does not respond (eg. changing band)
 				log.Printf("Error on command: %s", err)
 				time.Sleep(1000 * time.Millisecond)
 				continue
 			}
-			match, err = regexp.MatchString("^MD.;", mode)
-			if match {
-				rigMode = mode[2:3]
-			}
+			rigMode = matched[1]
 
-			freqI, err = kx3.Command("FA;")
+			matched, err = kx3.Command("FA;", RE_RES_FA)
 			if err != nil {
 				log.Printf("Error on command: %s", err)
 				time.Sleep(1000 * time.Millisecond)
 				continue
 			}
-			match, err = regexp.MatchString("^FA", freqI)
-			if match {
-				freq, err = strconv.ParseFloat(freqI[2:13], 64)
-				ShiftFFTHistory(freq - rigFrequency)
-				rigFrequency = freq
-			}
+			freq, err = strconv.ParseFloat(matched[1], 64)
+			ShiftFFTHistory(freq - rigFrequency)
+			rigFrequency = freq
+
 			time.Sleep(100 * time.Millisecond)
 		}
 	}
@@ -210,7 +208,7 @@ func Serial () {
 	}
 }
 
-func Start (c *Config) {
+func Start(c *Config) {
 	var err error
 	config = c
 
@@ -245,8 +243,8 @@ func Start (c *Config) {
 
 	fftResultChan, listenErrCh := listen(fftSize)
 	if err = <-listenErrCh; err != nil {
-		log.Fatalf("Failed to Open Device with %s", err);
-		return;
+		log.Fatalf("Failed to Open Device with %s", err)
+		return
 	}
 
 	buffer = ring.New(historySize)
@@ -402,8 +400,8 @@ func Start (c *Config) {
 			// Frequency labels
 			w, h := GetWindowSizeF()
 			for freq := 0.0; freq < sampleRate/2; freq += 5000.0 {
-				drawString(w/2.0+w*float32(freq/sampleRate) - 20, h*0.75, 12, fmt.Sprintf("%fMHz", (rigFrequency+freq)/1000/1000))
-				drawString(w/2.0-w*float32(freq/sampleRate) - 20, h*0.75, 12, fmt.Sprintf("%fMHz", (rigFrequency-freq)/1000/1000))
+				drawString(w/2.0+w*float32(freq/sampleRate)-20, h*0.75, 12, fmt.Sprintf("%fMHz", (rigFrequency+freq)/1000/1000))
+				drawString(w/2.0-w*float32(freq/sampleRate)-20, h*0.75, 12, fmt.Sprintf("%fMHz", (rigFrequency-freq)/1000/1000))
 			}
 
 			//			gl.Color4f(1, 1, 1, 1)
@@ -478,7 +476,7 @@ func onMouseBtn(button, state int) {
 		default:
 		}
 
-		ret, err := kx3.Command(fmt.Sprintf("FA%011d;FA;", int(freq)))
+		ret, err := kx3.Command(fmt.Sprintf("FA%011d;FA;", int(freq)), RE_RES_FA)
 		fmt.Printf("change: %s, %s", ret, err)
 	}
 }

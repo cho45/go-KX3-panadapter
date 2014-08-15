@@ -6,6 +6,7 @@ import (
 	"github.com/tarm/goserial"
 	"io"
 	"log"
+	"regexp"
 	"time"
 )
 
@@ -78,9 +79,9 @@ func (s *KX3Controller) Open(name string, baudrate int) error {
 // Block until response
 // Command("FA;")
 // Command("FA00007100000;FA;")
-func (s *KX3Controller) Command(command string) (string, error) {
+func (s *KX3Controller) Command(command string, re *regexp.Regexp) ([]string, error) {
 	if s.status != STATUS_OPENED {
-		return "", errors.New("invalid status")
+		return nil, errors.New("invalid status")
 	}
 clear:
 	for {
@@ -92,14 +93,19 @@ clear:
 	}
 	err := s.Send(command)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	select {
 	case ret := <-s.resultCh:
-		return ret, nil
+		matched := re.FindStringSubmatch(ret)
+		if matched != nil {
+			return matched, nil
+		} else {
+			return nil, errors.New("regexp unmatched")
+		}
 	case <-time.After(1000 * time.Millisecond):
-		return "", errors.New("timeout")
+		return nil, errors.New("timeout")
 	}
 }
 
@@ -118,10 +124,11 @@ func (s *KX3Controller) Close() error {
 		s.status = STATUS_CLOSED
 		err := s.port.Close()
 		close(s.resultCh)
+		close(s.writeCh)
+		close(s.writeResCh)
 		log.Printf("Closed with: %s", err)
 		return err
 	} else {
 		return errors.New("already closed")
 	}
 }
-
