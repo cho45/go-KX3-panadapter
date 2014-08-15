@@ -1,4 +1,3 @@
-//#!go run
 package panadapter
 
 import (
@@ -11,6 +10,7 @@ type Config struct {
 	Window      WindowConfig `json:"window"`
 	HistorySize int          `json:"historySize"`
 	FftSize     int          `json:"fftSize"`
+	Input       *InputConfig `json:"input",omitempty`
 }
 
 type PortConfig struct {
@@ -21,6 +21,11 @@ type PortConfig struct {
 type WindowConfig struct {
 	Width  int `json:"width"`
 	Height int `json:"height"`
+}
+
+type InputConfig struct {
+	Name       string  `json:"name"`
+	SampleRate float64 `json:"samplerate"`
 }
 
 func ReadConfig(filename string) (*Config, error) {

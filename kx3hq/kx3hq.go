@@ -61,13 +61,13 @@ func (s *KX3Controller) Open(name string, baudrate int) error {
 
 	go func() {
 		reader := bufio.NewReaderSize(s.port, 4096)
-		for {
+		for s.status == STATUS_OPENED {
 			command, err := reader.ReadString(';')
 			if err != nil {
 				if err == io.EOF {
 					break
 				} else {
-					break
+					panic(err)
 				}
 			}
 			s.resultCh <- command
@@ -77,6 +77,9 @@ func (s *KX3Controller) Open(name string, baudrate int) error {
 	return nil
 }
 
+// Block until response
+// Command("FA;")
+// Command("FA00007100000;FA;") 
 func (s *KX3Controller) Command(command string) (string, error) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -105,8 +108,8 @@ func (s *KX3Controller) Close() error {
 	log.Println("KX3Cotroller#Close")
 	if s.status != STATUS_CLOSED {
 		s.status = STATUS_CLOSED
-		close(s.resultCh)
 		err := s.port.Close()
+		close(s.resultCh)
 		log.Printf("Closed with: %s", err)
 		return err
 	} else {

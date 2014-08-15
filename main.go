@@ -39,8 +39,10 @@ var (
 	rigMode      string
 )
 
-func listen(fftSize int) chan []float64 {
+func listen(fftSize int) (chan []float64, chan error) {
 	ch := make(chan []float64, 1)
+	errCh := make(chan error)
+
 	phaseI := make([]float64, fftSize)
 	phaseQ := make([]float64, fftSize)
 	complexIQ := make([]complex128, fftSize)
@@ -51,62 +53,76 @@ func listen(fftSize int) chan []float64 {
 
 		in := make([]int32, fftSize)
 
-//		devices, err := portaudio.Devices()
-//		var device *portaudio.DeviceInfo
-//		for _, deviceInfo := range devices {
-//			if deviceInfo.MaxInputChannels >= 2 {
-//				device = deviceInfo
-//				break
-//			}
-//		}
-//
-//		if device != nil {
-//			log.Printf("Use %v", device)
-//		} else {
-//			log.Fatalf("No devices found with stereo input")
-//			for _, deviceInfo := range devices {
-//				log.Fatalf("%v", deviceInfo)
-//			}
-//		}
-//
-//		stream, err := portaudio.OpenStream(portaudio.StreamParameters{
-//			Input: portaudio.StreamDeviceParameters{
-//				Device:   device,
-//				Channels: 2,
-//				Latency:  device.DefaultHighInputLatency,
-//			},
-//			Output: portaudio.StreamDeviceParameters{
-//				Device:   nil,
-//				Channels: 0,
-//				Latency:  0,
-//			},
-//			SampleRate:      device.DefaultSampleRate,
-//			FramesPerBuffer: len(in),
-//			Flags:           portaudio.NoFlag,
-//		}, in)
-//		if err != nil {
-//			panic(err)
-//		}
-//		defer stream.Close()
+		var device *portaudio.DeviceInfo
+		var stream *portaudio.Stream
+		var err error
 
-		device, err := portaudio.DefaultInputDevice()
-		if err != nil {
-			panic(err)
+		if Config.Input != nil {
+			devices, err := portaudio.Devices()
+			for _, deviceInfo := range devices {
+				if deviceInfo.Name == Config.Input.Name {
+					device = deviceInfo
+					break
+				}
+			}
+
+			if device != nil {
+				log.Printf("Use %v", device)
+				stream, err = portaudio.OpenStream(portaudio.StreamParameters{
+					Input: portaudio.StreamDeviceParameters{
+						Device:   device,
+						Channels: 2,
+						Latency:  device.DefaultHighInputLatency,
+					},
+					Output: portaudio.StreamDeviceParameters{
+						Device:   nil,
+						Channels: 0,
+						Latency:  0,
+					},
+					SampleRate:      Config.Input.SampleRate,
+					FramesPerBuffer: len(in),
+					Flags:           portaudio.NoFlag,
+				}, in)
+				if err != nil {
+					errCh <- err
+					return
+				}
+				defer stream.Close()
+			} else {
+				log.Fatalf("No matched devices: (required: '%s')", Config.Input.Name)
+				for _, deviceInfo := range devices {
+					log.Fatalf("Found Device... %s %.1f", deviceInfo.Name, deviceInfo.DefaultSampleRate)
+				}
+				log.Fatalf("Fallback to default input device")
+			}
 		}
 
-		sampleRate = device.DefaultSampleRate
+		if device == nil {
+			device, err = portaudio.DefaultInputDevice()
+			log.Printf("Use %v", device)
+			if err != nil {
+				errCh <- err
+				return
+			}
 
-		stream, err := portaudio.OpenDefaultStream(2, 0, device.DefaultSampleRate, len(in), in)
-		if err != nil {
-			panic(err)
+			stream, err = portaudio.OpenDefaultStream(2, 0, device.DefaultSampleRate, len(in), in)
+			if err != nil {
+				errCh <- err
+				return
+			}
+			defer stream.Close()
 		}
-		defer stream.Close()
+
+		sampleRate = stream.Info().SampleRate
+		log.Printf("Opened : %s %.1f", device.Name, sampleRate)
 
 		if err = stream.Start(); err != nil {
-			panic(err)
+			errCh <- err
+			return
 		}
 		defer stream.Stop()
 
+		errCh <- nil
 		for running {
 			if err = stream.Read(); err != nil {
 				log.Printf("portaudio: stream.Read() failed: %s", err)
@@ -144,7 +160,7 @@ func listen(fftSize int) chan []float64 {
 		}
 	}()
 
-	return ch
+	return ch, errCh
 }
 
 func main() {
@@ -182,6 +198,7 @@ func main() {
 			for {
 				mode, err = kx3.Command("MD;")
 				if err != nil {
+					// timeout when KX3 does not respond (eg. changing band)
 					log.Printf("Error on command: %s", err)
 					time.Sleep(1000 * time.Millisecond)
 					continue
@@ -209,7 +226,7 @@ func main() {
 
 		for {
 			connect()
-			log.Printf("Reconnect...")
+			log.Printf("Sleep 3sec for retrying")
 			time.Sleep(3000 * time.Millisecond)
 		}
 	}()
@@ -234,7 +251,11 @@ func main() {
 	glfw.SetMouseButtonCallback(onMouseBtn)
 	glfw.SetWindowSizeCallback(onResize)
 
-	fftResultChan := listen(fftSize)
+	fftResultChan, listenErrCh := listen(fftSize)
+	if err = <-listenErrCh; err != nil {
+		log.Fatalf("Failed to Open Device with %s", err);
+		return;
+	}
 
 	buffer = ring.New(historySize)
 	buffer.Value = make([]byte, fftBinSize*3)

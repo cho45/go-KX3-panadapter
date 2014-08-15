@@ -8,5 +8,9 @@
 		"height" : 600
 	},
 	"historySize" : 500,
-	"fftSize" : 2048
+	"fftSize" : 2048,
+	"input" : {
+		"name" : "Sound Blaster Easy Record",
+		"samplerate" : 48000
+	}
 }
