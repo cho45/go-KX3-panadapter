@@ -259,7 +259,7 @@ func Start (c *Config) {
 
 	texture := gl.GenTexture()
 
-	file, err := gas.Abs("code.google.com/p/freetype-go/testdata/luxisr.ttf")
+	file, err := gas.Abs("github.com/cho45/go-KX3-panadapter/assets/Roboto/Roboto-Bold.ttf")
 	if err != nil {
 		log.Printf("Find font file: %v", err)
 		return
@@ -402,8 +402,8 @@ func Start (c *Config) {
 			// Frequency labels
 			w, h := GetWindowSizeF()
 			for freq := 0.0; freq < sampleRate/2; freq += 5000.0 {
-				drawString(w/2.0+w*float32(freq/sampleRate), h*0.75, 12, fmt.Sprintf("%fMHz", (rigFrequency+freq)/1000/1000))
-				drawString(w/2.0-w*float32(freq/sampleRate), h*0.75, 12, fmt.Sprintf("%fMHz", (rigFrequency-freq)/1000/1000))
+				drawString(w/2.0+w*float32(freq/sampleRate) - 20, h*0.75, 12, fmt.Sprintf("%fMHz", (rigFrequency+freq)/1000/1000))
+				drawString(w/2.0-w*float32(freq/sampleRate) - 20, h*0.75, 12, fmt.Sprintf("%fMHz", (rigFrequency-freq)/1000/1000))
 			}
 
 			//			gl.Color4f(1, 1, 1, 1)
@@ -420,7 +420,7 @@ func Start (c *Config) {
 			} else {
 				fy -= 50.0
 			}
-			drawString(fx, fy, 12, fmt.Sprintf("%fMHz", FreqFromMousePos()/1000/1000))
+			drawString(fx, fy, 14, fmt.Sprintf("%fMHz", FreqFromMousePos()/1000/1000))
 		})
 
 		// done
