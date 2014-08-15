@@ -50,9 +50,11 @@ func (s *KX3Controller) Open(name string, baudrate int) error {
 	s.writeResCh = make(chan error, 1)
 	s.status = STATUS_OPENED
 
+	// reader thread
 	go func() {
 		reader := bufio.NewReaderSize(s.port, 4096)
 		for s.status == STATUS_OPENED {
+			// TODO: TB response include ";" in its message
 			command, err := reader.ReadString(';')
 			if err != nil {
 				if err == io.EOF {
@@ -66,6 +68,7 @@ func (s *KX3Controller) Open(name string, baudrate int) error {
 		log.Println("reader thread is done")
 	}()
 
+	// writer thread
 	go func() {
 		for s.status == STATUS_OPENED {
 			command := <-s.writeCh
@@ -98,11 +101,15 @@ clear:
 
 	select {
 	case ret := <-s.resultCh:
-		matched := re.FindStringSubmatch(ret)
-		if matched != nil {
-			return matched, nil
+		if ret != "?;" {
+			matched := re.FindStringSubmatch(ret)
+			if matched != nil {
+				return matched, nil
+			} else {
+				return nil, errors.New("regexp unmatched")
+			}
 		} else {
-			return nil, errors.New("regexp unmatched")
+			return nil, errors.New("rig is busy")
 		}
 	case <-time.After(1000 * time.Millisecond):
 		return nil, errors.New("timeout")
