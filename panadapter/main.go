@@ -7,7 +7,6 @@ import (
 	"log"
 	"math"
 	"os"
-	"regexp"
 	"strconv"
 	"time"
 
@@ -36,12 +35,7 @@ var (
 	rigMode      string
 )
 
-var (
-	RE_RES_MD = regexp.MustCompile("^MD([0-9]);$")
-	RE_RES_FA = regexp.MustCompile("^FA([0-9]{11});$")
-)
-
-func listen(fftSize int) (chan []float64, chan error) {
+func StartFFT(fftSize int) (chan []float64, chan error) {
 	ch := make(chan []float64, 1)
 	errCh := make(chan error)
 
@@ -178,7 +172,7 @@ func Serial() {
 		var freq float64
 		var matched []string
 		for {
-			matched, err = kx3.Command("MD;", RE_RES_MD)
+			matched, err = kx3.Command("MD;", kx3hq.RSP_MD)
 			if err != nil {
 				// timeout when KX3 does not respond (eg. changing band)
 				log.Printf("Error on command: %s", err)
@@ -187,7 +181,7 @@ func Serial() {
 			}
 			rigMode = matched[1]
 
-			matched, err = kx3.Command("FA;", RE_RES_FA)
+			matched, err = kx3.Command("FA;", kx3hq.RSP_FA)
 			if err != nil {
 				log.Printf("Error on command: %s", err)
 				time.Sleep(1000 * time.Millisecond)
@@ -222,6 +216,7 @@ func Start(c *Config) {
 	fftBinSize := fftSize
 
 	go Serial()
+	go ServWebSocket()
 
 	if err = glfw.Init(); err != nil {
 		log.Fatalf("%v\n", err)
@@ -241,7 +236,7 @@ func Start(c *Config) {
 	glfw.SetMouseButtonCallback(onMouseBtn)
 	glfw.SetWindowSizeCallback(onResize)
 
-	fftResultChan, listenErrCh := listen(fftSize)
+	fftResultChan, listenErrCh := StartFFT(fftSize)
 	if err = <-listenErrCh; err != nil {
 		log.Fatalf("Failed to Open Device with %s", err)
 		return
@@ -476,7 +471,7 @@ func onMouseBtn(button, state int) {
 		default:
 		}
 
-		ret, err := kx3.Command(fmt.Sprintf("FA%011d;FA;", int(freq)), RE_RES_FA)
+		ret, err := kx3.Command(fmt.Sprintf("FA%011d;FA;", int(freq)), kx3hq.RSP_FA)
 		fmt.Printf("change: %s, %s", ret, err)
 	}
 }

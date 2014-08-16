@@ -3,10 +3,13 @@ package kx3hq
 import (
 	"bufio"
 	"errors"
+	"fmt"
 	"github.com/tarm/goserial"
 	"io"
 	"log"
 	"regexp"
+	"strconv"
+	"sync"
 	"time"
 )
 
@@ -25,6 +28,12 @@ const (
 	STATUS_CLOSED
 )
 
+var (
+	RSP_TB = regexp.MustCompile("^TB([0-9])([0-9]{2})(.*);$")
+	RSP_MD = regexp.MustCompile("^MD([0-9]);$")
+	RSP_FA = regexp.MustCompile("^FA([0-9]{11});$")
+)
+
 type KX3Controller struct {
 	port       io.ReadWriteCloser
 	resultCh   chan string
@@ -32,6 +41,9 @@ type KX3Controller struct {
 	writeResCh chan error
 	reader     *bufio.Reader
 	status     int
+	mutex      *sync.Mutex
+
+	TextBuffer []byte
 }
 
 func (s *KX3Controller) Open(name string, baudrate int) error {
@@ -45,6 +57,7 @@ func (s *KX3Controller) Open(name string, baudrate int) error {
 		return err
 	}
 	s.port = port
+	s.mutex = &sync.Mutex{}
 	s.resultCh = make(chan string)
 	s.writeCh = make(chan string, 1)
 	s.writeResCh = make(chan error, 1)
@@ -54,7 +67,6 @@ func (s *KX3Controller) Open(name string, baudrate int) error {
 	go func() {
 		reader := bufio.NewReaderSize(s.port, 4096)
 		for s.status == STATUS_OPENED {
-			// TODO: TB response include ";" in its message
 			command, err := reader.ReadString(';')
 			if err != nil {
 				if err == io.EOF {
@@ -63,6 +75,25 @@ func (s *KX3Controller) Open(name string, baudrate int) error {
 					panic(err)
 				}
 			}
+
+			matched := RSP_TB.FindStringSubmatch(command)
+			if matched != nil {
+				length, err := strconv.ParseInt(matched[2], 10, 32)
+				if err != nil {
+					s.resultCh <- command
+					continue
+				}
+				remain, err := reader.Peek(int(length) - len(matched[3]))
+				if err != nil {
+					if err == io.EOF {
+						break
+					} else {
+						panic(err)
+					}
+				}
+				command += string(remain)
+			}
+
 			s.resultCh <- command
 		}
 		log.Println("reader thread is done")
@@ -86,6 +117,8 @@ func (s *KX3Controller) Command(command string, re *regexp.Regexp) ([]string, er
 	if s.status != STATUS_OPENED {
 		return nil, errors.New("invalid status")
 	}
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 clear:
 	for {
 		select {
@@ -94,7 +127,8 @@ clear:
 			break clear
 		}
 	}
-	err := s.Send(command)
+	s.writeCh <- command
+	err := <-s.writeResCh
 	if err != nil {
 		return nil, err
 	}
@@ -106,7 +140,7 @@ clear:
 			if matched != nil {
 				return matched, nil
 			} else {
-				return nil, errors.New("regexp unmatched")
+				return nil, errors.New(fmt.Sprintf("regexp unmatched: %v -> \"%s\"", re, ret))
 			}
 		} else {
 			return nil, errors.New("rig is busy")
@@ -117,6 +151,8 @@ clear:
 }
 
 func (s *KX3Controller) Send(command string) error {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	s.writeCh <- command
 	err := <-s.writeResCh
 	if err != nil {
