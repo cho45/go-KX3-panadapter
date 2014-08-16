@@ -13,14 +13,16 @@ import (
 	"time"
 )
 
-const MODE_LSB = "1"
-const MODE_USB = "2"
-const MODE_CW = "3"
-const MODE_FM = "4"
-const MODE_AM = "5"
-const MODE_DATA = "6"
-const MODE_CW_REV = "7"
-const MODE_DATA_REV = "8"
+const (
+	MODE_LSB = "1"
+	MODE_USB = "2"
+	MODE_CW = "3"
+	MODE_FM = "4"
+	MODE_AM = "5"
+	MODE_DATA = "6"
+	MODE_CW_REV = "7"
+	MODE_DATA_REV = "8"
+)
 
 const (
 	STATUS_INIT = iota
@@ -42,8 +44,6 @@ type KX3Controller struct {
 	reader     *bufio.Reader
 	status     int
 	mutex      *sync.Mutex
-
-	TextBuffer []byte
 }
 
 func (s *KX3Controller) Open(name string, baudrate int) error {
