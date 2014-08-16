@@ -46,7 +46,7 @@ func ServWebSocket() error {
 
 	localBuffer := make(chan byte, 255)
 	deviceBuffer := make([]byte, 10)
-	decodeBuffer := make(chan byte)
+	// decodeBuffer := make(chan byte)
 	sendBuffer := make([]byte, MAX_BUFFER_SIZE)
 	pubsub := pubsub.New()
 
@@ -63,9 +63,9 @@ func ServWebSocket() error {
 			}
 
 			// device decoded texts
-			for _, char := range ret[3] {
-				decodeBuffer <- byte(char)
-			}
+			// for _, char := range ret[3] {
+			//	decodeBuffer <- byte(char)
+			// }
 
 			sent := deviceBuffer[:len(deviceBuffer)-int(bufferedCount)]
 			deviceBuffer = deviceBuffer[len(deviceBuffer)-int(bufferedCount):]
@@ -112,7 +112,7 @@ func ServWebSocket() error {
 
 	http.Handle("/", websocket.Handler(func(ws *websocket.Conn) {
 		log.Printf("New websocket: %v", ws)
-		pubsub.Sub(func (ev *SentEvent) {
+		subFunc := func (ev *SentEvent) {
 			event := &JSONRPCEventResponse{
 				Result : &JSONRPCEventResponseResult{
 					Event : "sent",
@@ -120,7 +120,10 @@ func ServWebSocket() error {
 				},
 			}
 			websocket.JSON.Send(ws, event)
-		})
+		}
+
+		pubsub.Sub(subFunc)
+		defer pubsub.Leave(subFunc)
 
 		var req JSONRPCRequest
 		for {
