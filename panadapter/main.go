@@ -236,18 +236,13 @@ func Start(c *Config) {
 	glfw.SetMouseButtonCallback(onMouseBtn)
 	glfw.SetWindowSizeCallback(onResize)
 	gl.Init()
+	gl.PixelStorei(gl.UNPACK_ALIGNMENT, 8)
+	gl.PixelStorei(gl.PACK_ALIGNMENT, 8)
 
 	historyBuffer := gl.GenBuffer()
 	historyBuffer.Bind(gl.PIXEL_UNPACK_BUFFER)
-	gl.BufferData(gl.PIXEL_UNPACK_BUFFER,  fftBinSize*historySize*3, nil, gl.STREAM_DRAW)
+	gl.BufferData(gl.PIXEL_UNPACK_BUFFER, fftBinSize*historySize*4, nil, gl.STREAM_DRAW)
 	historyBuffer.Unbind(gl.PIXEL_UNPACK_BUFFER)
-
-	texture := gl.GenTexture()
-	texture.Bind(gl.TEXTURE_2D)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGB, fftBinSize, historySize, 0, gl.RGB, gl.UNSIGNED_BYTE, nil)
-	texture.Unbind(gl.TEXTURE_2D)
 
 	fftResultChan, listenErrCh := StartFFT(fftSize)
 	if err = <-listenErrCh; err != nil {
@@ -256,9 +251,9 @@ func Start(c *Config) {
 	}
 
 	buffer = ring.New(historySize)
-	buffer.Value = make([]byte, fftBinSize*3)
+	buffer.Value = make([]uint32, fftBinSize)
 	for p := buffer.Next(); p != buffer; p = p.Next() {
-		p.Value = make([]byte, fftBinSize*3)
+		p.Value = make([]uint32, fftBinSize)
 	}
 
 	file, err := gas.Abs("github.com/cho45/go-KX3-panadapter/assets/Roboto/Roboto-Bold.ttf")
@@ -275,9 +270,16 @@ func Start(c *Config) {
 		defer fonts[i].Release()
 	}
 
+	texture := gl.GenTexture()
+	texture.Bind(gl.TEXTURE_2D)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, fftBinSize, historySize, 0, gl.BGRA, gl.UNSIGNED_INT_8_8_8_8_REV, nil)
+	texture.Unbind(gl.TEXTURE_2D)
+
 	for running && glfw.WindowParam(glfw.Opened) == 1 {
 		fftResult := <-fftResultChan
-		current := buffer.Value.([]byte)
+		current := buffer.Value.([]uint32)
 
 		for i := 0; i < fftBinSize; i++ {
 			p := fftResult[i] / dynamicRange
@@ -328,20 +330,19 @@ func Start(c *Config) {
 				b = 255 * p
 			}
 
-			current[i*3] = byte(r)
-			current[i*3+1] = byte(g)
-			current[i*3+2] = byte(b)
+			// current[i] = uint32(b) << 24 | uint32(g) << 16 | uint32(r) << 8 | 255
+			current[i] = 255 << 24 | uint32(r) << 16 | uint32(g) << 8 | uint32(b) << 0
 		}
 
 		gl.Clear(gl.COLOR_BUFFER_BIT)
 
 		historyBuffer.Bind(gl.PIXEL_UNPACK_BUFFER)
-		historyBitmap := *(*[]byte)(gl.MapBufferSlice(gl.PIXEL_UNPACK_BUFFER, gl.WRITE_ONLY, 1))
+		historyBitmap := *(*[]uint32)(gl.MapBufferSlice(gl.PIXEL_UNPACK_BUFFER, gl.WRITE_ONLY, 1))
 		// draw fft history
 		i := 0
 		buffer.Do(func(v interface{}) {
-			copy(historyBitmap[i:], v.([]byte))
-			i += fftBinSize * 3
+			copy(historyBitmap[i:], v.([]uint32))
+			i += fftBinSize
 		})
 		gl.UnmapBuffer(gl.PIXEL_UNPACK_BUFFER)
 
@@ -349,7 +350,7 @@ func Start(c *Config) {
 		gl.Translatef(-1.0, -1.0, 0.0)
 		gl.Enable(gl.TEXTURE_2D)
 		texture.Bind(gl.TEXTURE_2D)
-		gl.TexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, fftBinSize, historySize, gl.RGB, gl.UNSIGNED_BYTE, nil)
+		gl.TexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, fftBinSize, historySize, gl.BGRA, gl.UNSIGNED_INT_8_8_8_8_REV, nil)
 		historyBuffer.Unbind(gl.PIXEL_UNPACK_BUFFER)
 		gl.Begin(gl.QUADS)
 		gl.Color3f(1.0, 1.0, 1.0)
