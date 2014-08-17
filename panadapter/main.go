@@ -251,6 +251,11 @@ func Start(c *Config) {
 	historyBitmap := make([]byte, fftBinSize*historySize*3)
 
 	texture := gl.GenTexture()
+	texture.Bind(gl.TEXTURE_2D)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGB, fftBinSize, historySize, 0, gl.RGB, gl.UNSIGNED_BYTE, historyBitmap)
+	texture.Unbind(gl.TEXTURE_2D)
 
 	file, err := gas.Abs("github.com/cho45/go-KX3-panadapter/assets/Roboto/Roboto-Bold.ttf")
 	if err != nil {
@@ -337,9 +342,7 @@ func Start(c *Config) {
 		gl.Translatef(-1.0, -1.0, 0.0)
 		gl.Enable(gl.TEXTURE_2D)
 		texture.Bind(gl.TEXTURE_2D)
-		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGB, fftBinSize, historySize, 0, gl.RGB, gl.UNSIGNED_BYTE, historyBitmap)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+		gl.TexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, fftBinSize, historySize, gl.RGB, gl.UNSIGNED_BYTE, historyBitmap)
 		gl.Begin(gl.QUADS)
 		gl.Color3f(1.0, 1.0, 1.0)
 		gl.TexCoord2d(0, 0)
