@@ -241,10 +241,20 @@ func Start(c *Config) {
 	gl.PixelStorei(gl.UNPACK_ALIGNMENT, 8)
 	gl.PixelStorei(gl.PACK_ALIGNMENT, 8)
 
-	historyBuffer := gl.GenBuffer()
-	historyBuffer.Bind(gl.PIXEL_UNPACK_BUFFER)
-	gl.BufferData(gl.PIXEL_UNPACK_BUFFER, fftBinSize*historySize*4, nil, gl.STREAM_DRAW)
-	historyBuffer.Unbind(gl.PIXEL_UNPACK_BUFFER)
+	drawBuffers := make([]gl.Buffer, 2)
+	gl.GenBuffers(drawBuffers)
+	for _, buffer := range drawBuffers {
+		buffer.Bind(gl.PIXEL_UNPACK_BUFFER)
+		gl.BufferData(gl.PIXEL_UNPACK_BUFFER, fftBinSize*historySize*4, nil, gl.STREAM_DRAW)
+		buffer.Unbind(gl.PIXEL_UNPACK_BUFFER)
+	}
+
+	texture := gl.GenTexture()
+	texture.Bind(gl.TEXTURE_2D)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, fftBinSize, historySize, 0, gl.BGRA, gl.UNSIGNED_INT_8_8_8_8_REV, nil)
+	texture.Unbind(gl.TEXTURE_2D)
 
 	fftResultChan, listenErrCh := StartFFT(fftSize)
 	if err = <-listenErrCh; err != nil {
@@ -272,12 +282,8 @@ func Start(c *Config) {
 		defer fonts[i].Release()
 	}
 
-	texture := gl.GenTexture()
-	texture.Bind(gl.TEXTURE_2D)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, fftBinSize, historySize, 0, gl.BGRA, gl.UNSIGNED_INT_8_8_8_8_REV, nil)
-	texture.Unbind(gl.TEXTURE_2D)
+	currentDrawBuffer := 0
+	currentDrawLine := 0
 
 	for running && glfw.WindowParam(glfw.Opened) == 1 {
 		fftResult := <-fftResultChan
@@ -339,35 +345,66 @@ func Start(c *Config) {
 		gl.Clear(gl.COLOR_BUFFER_BIT)
 
 		gl.Enable(gl.TEXTURE_2D)
+
 		texture.Bind(gl.TEXTURE_2D)
 
-		historyBuffer.Bind(gl.PIXEL_PACK_BUFFER)
-		historyBitmap := *(*[]uint32)(gl.MapBufferSlice(gl.PIXEL_PACK_BUFFER, gl.READ_WRITE, 4))
 		if !forceUpdateEntire {
-			// Shift 1px
-			copy(historyBitmap[:(fftBinSize*(historySize-1))], historyBitmap[fftBinSize:])
-			// And append current line
-			copy(historyBitmap[(fftBinSize*(historySize-1)):], current)
+			drawBuffer := drawBuffers[currentDrawBuffer]
+			drawBuffer.Bind(gl.PIXEL_PACK_BUFFER)
+			historyBitmap := *(*[]uint32)(gl.MapBufferSlice(gl.PIXEL_PACK_BUFFER, gl.READ_WRITE, 4))
+			copy(historyBitmap[currentDrawLine * fftSize:], current)
+			gl.UnmapBuffer(gl.PIXEL_PACK_BUFFER)
+			drawBuffer.Unbind(gl.PIXEL_PACK_BUFFER)
+
+			currentDrawLine++
+			if (currentDrawLine >= historySize) {
+				currentDrawLine = 0
+				currentDrawBuffer = (currentDrawBuffer + 1) % 2
+			}
 		} else {
-			log.Println("forceUpdateEntire")
+			drawBuffer := drawBuffers[0]
+			drawBuffer.Bind(gl.PIXEL_PACK_BUFFER)
+			historyBitmap := *(*[]uint32)(gl.MapBufferSlice(gl.PIXEL_PACK_BUFFER, gl.READ_WRITE, 4))
 			// draw fft history
 			i := 0
 			buffer.Do(func(v interface{}) {
 				copy(historyBitmap[i:], v.([]uint32))
 				i += fftBinSize
 			})
+			gl.UnmapBuffer(gl.PIXEL_PACK_BUFFER)
+			drawBuffer.Unbind(gl.PIXEL_PACK_BUFFER)
+
+			currentDrawLine = 0
+			currentDrawBuffer = 1
+
 			forceUpdateEntire = false
 		}
-		gl.UnmapBuffer(gl.PIXEL_PACK_BUFFER)
-		historyBuffer.Unbind(gl.PIXEL_PACK_BUFFER)
 
-		historyBuffer.Bind(gl.PIXEL_UNPACK_BUFFER)
+		historyHeight := 1.5
+		fftHeight := 2 - historyHeight
+		
+		pxHeight := historyHeight / float64(historySize)
+
 		gl.PushMatrix()
-		gl.Translatef(-1.0, -1.0, 0.0)
+		gl.Translated(-1.0, -2.5 + (pxHeight * float64(currentDrawLine)), 0.0)
+		drawBuffers[currentDrawBuffer].Bind(gl.PIXEL_UNPACK_BUFFER)
 		gl.TexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, fftBinSize, historySize, gl.BGRA, gl.UNSIGNED_INT_8_8_8_8_REV, nil)
-		historyBuffer.Unbind(gl.PIXEL_UNPACK_BUFFER)
+		drawBuffers[currentDrawBuffer].Unbind(gl.PIXEL_UNPACK_BUFFER)
 		gl.Begin(gl.QUADS)
-		gl.Color3f(1.0, 1.0, 1.0)
+		gl.TexCoord2d(0, 1)
+		gl.Vertex2d(0, 2 - historyHeight)
+		gl.TexCoord2d(1, 1)
+		gl.Vertex2d(2, 2 - historyHeight)
+		gl.TexCoord2d(1, 0)
+		gl.Vertex2d(2, 2)
+		gl.TexCoord2d(0, 0)
+		gl.Vertex2d(0, 2)
+		gl.End()
+		gl.Translated(0, (pxHeight * float64(historySize-1)), 0.0)
+		drawBuffers[(currentDrawBuffer + 1) % 2].Bind(gl.PIXEL_UNPACK_BUFFER)
+		gl.TexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, fftBinSize, historySize, gl.BGRA, gl.UNSIGNED_INT_8_8_8_8_REV, nil)
+		drawBuffers[(currentDrawBuffer + 1) % 2].Unbind(gl.PIXEL_UNPACK_BUFFER)
+		gl.Begin(gl.QUADS)
 		gl.TexCoord2d(0, 1)
 		gl.Vertex2d(0, 0.5)
 		gl.TexCoord2d(1, 1)
@@ -377,8 +414,12 @@ func Start(c *Config) {
 		gl.TexCoord2d(0, 0)
 		gl.Vertex2d(0, 2)
 		gl.End()
-		texture.Unbind(gl.TEXTURE_2D)
 		gl.PopMatrix()
+		texture.Unbind(gl.TEXTURE_2D)
+
+		gl.Color4d(0, 0, 0, 1)
+		gl.Rectd(-1, -0.5, 1, -1)
+
 
 		// draw grid
 		withPixelContext(func() {
@@ -410,7 +451,7 @@ func Start(c *Config) {
 			if p < 0 {
 				p = 0
 			}
-			gl.Vertex2d(x, p*0.5)
+			gl.Vertex2d(x, p*fftHeight)
 		}
 		gl.End()
 		gl.PopMatrix()
