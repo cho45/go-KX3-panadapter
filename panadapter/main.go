@@ -239,9 +239,15 @@ func Start(c *Config) {
 
 	historyBuffer := gl.GenBuffer()
 	historyBuffer.Bind(gl.PIXEL_UNPACK_BUFFER)
-	gl.BufferData(gl.PIXEL_UNPACK_BUFFER,  fftBinSize*historySize*3, nil, gl.DYNAMIC_DRAW)
+	gl.BufferData(gl.PIXEL_UNPACK_BUFFER,  fftBinSize*historySize*3, nil, gl.STREAM_DRAW)
 	historyBuffer.Unbind(gl.PIXEL_UNPACK_BUFFER)
+
 	texture := gl.GenTexture()
+	texture.Bind(gl.TEXTURE_2D)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
+	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGB, fftBinSize, historySize, 0, gl.RGB, gl.UNSIGNED_BYTE, nil)
+	texture.Unbind(gl.TEXTURE_2D)
 
 	fftResultChan, listenErrCh := StartFFT(fftSize)
 	if err = <-listenErrCh; err != nil {
@@ -329,25 +335,24 @@ func Start(c *Config) {
 
 		gl.Clear(gl.COLOR_BUFFER_BIT)
 
-		historyBuffer.Bind(gl.PIXEL_PACK_BUFFER)
-		historyBitmap := *(*[]byte)(gl.MapBufferSlice(gl.PIXEL_PACK_BUFFER, gl.WRITE_ONLY, 1))
+		historyBuffer.Bind(gl.PIXEL_UNPACK_BUFFER)
+		historyBitmap := *(*[]byte)(gl.MapBufferSlice(gl.PIXEL_UNPACK_BUFFER, gl.WRITE_ONLY, 1))
 		// draw fft history
 		i := 0
 		buffer.Do(func(v interface{}) {
 			copy(historyBitmap[i:], v.([]byte))
 			i += fftBinSize * 3
 		})
-		gl.UnmapBuffer(gl.PIXEL_PACK_BUFFER)
-		historyBuffer.Unbind(gl.PIXEL_PACK_BUFFER)
+		gl.UnmapBuffer(gl.PIXEL_UNPACK_BUFFER)
+		historyBuffer.Unbind(gl.PIXEL_UNPACK_BUFFER)
 
 		gl.PushMatrix()
 		gl.Translatef(-1.0, -1.0, 0.0)
 		gl.Enable(gl.TEXTURE_2D)
 		texture.Bind(gl.TEXTURE_2D)
 		historyBuffer.Bind(gl.PIXEL_UNPACK_BUFFER)
-		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGB, fftBinSize, historySize, 0, gl.RGB, gl.UNSIGNED_BYTE, nil)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
-		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
+		gl.TexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, fftBinSize, historySize, gl.RGB, gl.UNSIGNED_BYTE, nil)
+		historyBuffer.Unbind(gl.PIXEL_UNPACK_BUFFER)
 		gl.Begin(gl.QUADS)
 		gl.Color3f(1.0, 1.0, 1.0)
 		gl.TexCoord2d(0, 0)
@@ -360,7 +365,6 @@ func Start(c *Config) {
 		gl.Vertex2d(0, 2)
 		gl.End()
 		texture.Unbind(gl.TEXTURE_2D)
-		historyBuffer.Unbind(gl.PIXEL_UNPACK_BUFFER)
 		gl.PopMatrix()
 
 		// draw grid
