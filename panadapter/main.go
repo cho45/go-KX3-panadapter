@@ -215,8 +215,8 @@ func Start(c *Config) {
 	historySize := config.HistorySize
 	fftBinSize := fftSize
 
-//	go Serial()
-//	go ServWebSocket()
+	go Serial()
+	go ServWebSocket()
 
 	if err = glfw.Init(); err != nil {
 		log.Fatalf("%v\n", err)
@@ -344,13 +344,11 @@ func Start(c *Config) {
 			i += fftBinSize * 3
 		})
 		gl.UnmapBuffer(gl.PIXEL_UNPACK_BUFFER)
-		historyBuffer.Unbind(gl.PIXEL_UNPACK_BUFFER)
 
 		gl.PushMatrix()
 		gl.Translatef(-1.0, -1.0, 0.0)
 		gl.Enable(gl.TEXTURE_2D)
 		texture.Bind(gl.TEXTURE_2D)
-		historyBuffer.Bind(gl.PIXEL_UNPACK_BUFFER)
 		gl.TexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, fftBinSize, historySize, gl.RGB, gl.UNSIGNED_BYTE, nil)
 		historyBuffer.Unbind(gl.PIXEL_UNPACK_BUFFER)
 		gl.Begin(gl.QUADS)
