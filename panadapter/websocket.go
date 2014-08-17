@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/andrebq/gas"
 	"code.google.com/p/go.net/websocket"
 	"github.com/cho45/go-KX3-panadapter/kx3hq"
 	"github.com/mattn/go-pubsub"
@@ -109,7 +110,7 @@ func ServWebSocket() error {
 		}
 	}
 
-	http.Handle("/", websocket.Handler(func(ws *websocket.Conn) {
+	http.Handle("/cw", websocket.Handler(func(ws *websocket.Conn) {
 		log.Printf("New websocket: %v", ws)
 		subFunc := func (ev *SentEvent) {
 			event := &JSONRPCEventResponse{
@@ -136,9 +137,37 @@ func ServWebSocket() error {
 			case "device_buffer":
 				res.Result = string(deviceBuffer)
 			case "speed":
-				res.Result = 20
+				s, ok := req.Params[0].(float64)
+				if ok {
+					ret, err := kx3.Command(fmt.Sprintf("KS%03d;KS;", int(s)), kx3hq.RSP_KS)
+					fmt.Printf("SetSpeed: %v %v", ret, err)
+					if err == nil {
+						res.Result = ret[1]
+					} else {
+						res.Error = err.Error()
+					}
+				} else {
+					ret, err := kx3.Command(fmt.Sprintf("KS;"), kx3hq.RSP_KS)
+					fmt.Printf("GetSpeed: %v %v", ret, err)
+					if err == nil {
+						res.Result = ret[1]
+					} else {
+						res.Error = err.Error()
+					}
+				}
 			case "tone":
-				res.Result = true
+				ret, err := kx3.Command(fmt.Sprintf("CW;"), kx3hq.RSP_CW)
+				fmt.Printf("GetTone: %v %v", ret, err)
+				if err == nil {
+					pitch, err := strconv.ParseUint(ret[1], 10, 32)
+					if err == nil {
+						res.Result = pitch * 10
+					} else {
+						res.Error = err.Error()
+					}
+				} else {
+					res.Error = err.Error()
+				}
 			case "send":
 				s, ok := req.Params[0].(string)
 				if ok {
@@ -168,8 +197,15 @@ func ServWebSocket() error {
 		}
 		log.Printf("Closed websocket: %v", ws)
 	}))
+
+	dir, err := gas.Abs("github.com/cho45/go-KX3-panadapter/cwclient")
+	if err != nil {
+		panic(err)
+	}
+	http.Handle("/", http.FileServer(http.Dir(dir)))
+
 	log.Printf("websocket server listen: %s", config.Server.Listen)
-	err := http.ListenAndServe(config.Server.Listen, nil)
+	err = http.ListenAndServe(config.Server.Listen, nil)
 	if err != nil {
 		log.Printf("http.ListenAndServe failed with  %s", err)
 	}

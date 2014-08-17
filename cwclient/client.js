@@ -367,7 +367,7 @@ App.factory('MorseDevice', function ($q) {
 
 App.controller('MainCtrl', function ($scope, $timeout, $document, MorseDevice) {
 	var device = new MorseDevice({
-		server : "ws://localhost:51234",
+		server : "ws://localhost:51234/cw",
 		autoReconnect : true
 	});
 

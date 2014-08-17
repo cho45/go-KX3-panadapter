@@ -31,9 +31,12 @@ const (
 )
 
 var (
+	RSP_CW = regexp.MustCompile("^CW([0-9]{2});$")
 	RSP_TB = regexp.MustCompile("^TB([0-9])([0-9]{2})(.*);$")
 	RSP_MD = regexp.MustCompile("^MD([0-9]);$")
 	RSP_FA = regexp.MustCompile("^FA([0-9]{11});$")
+	RSP_KS = regexp.MustCompile("^KS([0-9]{3});$")
+	RSP_IS = regexp.MustCompile("^IS(.)([0-9]{4});$")
 )
 
 type KX3Controller struct {
@@ -140,7 +143,7 @@ clear:
 			if matched != nil {
 				return matched, nil
 			} else {
-				return nil, errors.New(fmt.Sprintf("regexp unmatched: %v -> \"%s\"", re, ret))
+				return nil, fmt.Errorf("regexp unmatched: %v -> \"%s\"", re, ret)
 			}
 		} else {
 			return nil, errors.New("rig is busy")
