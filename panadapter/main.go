@@ -352,12 +352,12 @@ func Start(c *Config) {
 			drawBuffer := drawBuffers[currentDrawBuffer]
 			drawBuffer.Bind(gl.PIXEL_PACK_BUFFER)
 			historyBitmap := *(*[]uint32)(gl.MapBufferSlice(gl.PIXEL_PACK_BUFFER, gl.READ_WRITE, 4))
-			copy(historyBitmap[currentDrawLine * fftSize:], current)
+			copy(historyBitmap[currentDrawLine*fftSize:], current)
 			gl.UnmapBuffer(gl.PIXEL_PACK_BUFFER)
 			drawBuffer.Unbind(gl.PIXEL_PACK_BUFFER)
 
 			currentDrawLine++
-			if (currentDrawLine >= historySize) {
+			if currentDrawLine >= historySize {
 				currentDrawLine = 0
 				currentDrawBuffer = (currentDrawBuffer + 1) % 2
 			}
@@ -382,28 +382,28 @@ func Start(c *Config) {
 
 		historyHeight := 1.5
 		fftHeight := 2 - historyHeight
-		
+
 		pxHeight := historyHeight / float64(historySize)
 
 		gl.PushMatrix()
-		gl.Translated(-1.0, -2.5 + (pxHeight * float64(currentDrawLine)), 0.0)
+		gl.Translated(-1.0, -2.5+(pxHeight*float64(currentDrawLine)), 0.0)
 		drawBuffers[currentDrawBuffer].Bind(gl.PIXEL_UNPACK_BUFFER)
 		gl.TexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, fftBinSize, historySize, gl.BGRA, gl.UNSIGNED_INT_8_8_8_8_REV, nil)
 		drawBuffers[currentDrawBuffer].Unbind(gl.PIXEL_UNPACK_BUFFER)
 		gl.Begin(gl.QUADS)
 		gl.TexCoord2d(0, 1)
-		gl.Vertex2d(0, 2 - historyHeight)
+		gl.Vertex2d(0, 2-historyHeight)
 		gl.TexCoord2d(1, 1)
-		gl.Vertex2d(2, 2 - historyHeight)
+		gl.Vertex2d(2, 2-historyHeight)
 		gl.TexCoord2d(1, 0)
 		gl.Vertex2d(2, 2)
 		gl.TexCoord2d(0, 0)
 		gl.Vertex2d(0, 2)
 		gl.End()
 		gl.Translated(0, (pxHeight * float64(historySize-1)), 0.0)
-		drawBuffers[(currentDrawBuffer + 1) % 2].Bind(gl.PIXEL_UNPACK_BUFFER)
+		drawBuffers[(currentDrawBuffer+1)%2].Bind(gl.PIXEL_UNPACK_BUFFER)
 		gl.TexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, fftBinSize, historySize, gl.BGRA, gl.UNSIGNED_INT_8_8_8_8_REV, nil)
-		drawBuffers[(currentDrawBuffer + 1) % 2].Unbind(gl.PIXEL_UNPACK_BUFFER)
+		drawBuffers[(currentDrawBuffer+1)%2].Unbind(gl.PIXEL_UNPACK_BUFFER)
 		gl.Begin(gl.QUADS)
 		gl.TexCoord2d(0, 1)
 		gl.Vertex2d(0, 0.5)
@@ -419,7 +419,6 @@ func Start(c *Config) {
 
 		gl.Color4d(0, 0, 0, 1)
 		gl.Rectd(-1, -0.5, 1, -1)
-
 
 		// draw grid
 		withPixelContext(func() {
@@ -626,7 +625,7 @@ func ShiftFFTHistory(freqDiff float64) {
 		})
 	} else {
 		buffer.Do(func(v interface{}) {
-			bytes := v.([]byte)
+			bytes := v.([]uint32)
 			for i := 0; i < len(bytes); i++ {
 				bytes[i] = 0
 			}
