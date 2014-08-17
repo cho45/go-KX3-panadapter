@@ -350,11 +350,11 @@ func Start(c *Config) {
 
 		if !forceUpdateEntire {
 			drawBuffer := drawBuffers[currentDrawBuffer]
-			drawBuffer.Bind(gl.PIXEL_PACK_BUFFER)
-			historyBitmap := *(*[]uint32)(gl.MapBufferSlice(gl.PIXEL_PACK_BUFFER, gl.READ_WRITE, 4))
+			drawBuffer.Bind(gl.PIXEL_UNPACK_BUFFER)
+			historyBitmap := *(*[]uint32)(gl.MapBufferSlice(gl.PIXEL_UNPACK_BUFFER, gl.READ_WRITE, 4))
 			copy(historyBitmap[currentDrawLine*fftSize:], current)
-			gl.UnmapBuffer(gl.PIXEL_PACK_BUFFER)
-			drawBuffer.Unbind(gl.PIXEL_PACK_BUFFER)
+			gl.UnmapBuffer(gl.PIXEL_UNPACK_BUFFER)
+			drawBuffer.Unbind(gl.PIXEL_UNPACK_BUFFER)
 
 			currentDrawLine++
 			if currentDrawLine >= historySize {
@@ -363,16 +363,16 @@ func Start(c *Config) {
 			}
 		} else {
 			drawBuffer := drawBuffers[0]
-			drawBuffer.Bind(gl.PIXEL_PACK_BUFFER)
-			historyBitmap := *(*[]uint32)(gl.MapBufferSlice(gl.PIXEL_PACK_BUFFER, gl.READ_WRITE, 4))
+			drawBuffer.Bind(gl.PIXEL_UNPACK_BUFFER)
+			historyBitmap := *(*[]uint32)(gl.MapBufferSlice(gl.PIXEL_UNPACK_BUFFER, gl.READ_WRITE, 4))
 			// draw fft history
 			i := 0
 			buffer.Do(func(v interface{}) {
 				copy(historyBitmap[i:], v.([]uint32))
 				i += fftBinSize
 			})
-			gl.UnmapBuffer(gl.PIXEL_PACK_BUFFER)
-			drawBuffer.Unbind(gl.PIXEL_PACK_BUFFER)
+			gl.UnmapBuffer(gl.PIXEL_UNPACK_BUFFER)
+			drawBuffer.Unbind(gl.PIXEL_UNPACK_BUFFER)
 
 			currentDrawLine = 0
 			currentDrawBuffer = 1
