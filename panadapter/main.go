@@ -331,7 +331,7 @@ func Start(c *Config) {
 			}
 
 			// current[i] = uint32(b) << 24 | uint32(g) << 16 | uint32(r) << 8 | 255
-			current[i] = 255 << 24 | uint32(r) << 16 | uint32(g) << 8 | uint32(b) << 0
+			current[i] = 255<<24 | uint32(r)<<16 | uint32(g)<<8 | uint32(b)<<0
 		}
 
 		gl.Clear(gl.COLOR_BUFFER_BIT)
@@ -340,16 +340,15 @@ func Start(c *Config) {
 		texture.Bind(gl.TEXTURE_2D)
 
 		historyBuffer.Bind(gl.PIXEL_PACK_BUFFER)
-		historyBitmap := *(*[]uint32)(gl.MapBufferSlice(gl.PIXEL_PACK_BUFFER, gl.READ_WRITE, 1))
+		historyBitmap := *(*[]uint32)(gl.MapBufferSlice(gl.PIXEL_PACK_BUFFER, gl.READ_WRITE, 4))
 		// Shift 1px
 		copy(historyBitmap[:(fftBinSize*(historySize-1))], historyBitmap[fftBinSize:])
 		// And append current line
 		copy(historyBitmap[(fftBinSize*(historySize-1)):], current)
 		gl.UnmapBuffer(gl.PIXEL_PACK_BUFFER)
 		historyBuffer.Unbind(gl.PIXEL_PACK_BUFFER)
-		
-		historyBuffer.Bind(gl.PIXEL_UNPACK_BUFFER)
 
+		historyBuffer.Bind(gl.PIXEL_UNPACK_BUFFER)
 		gl.PushMatrix()
 		gl.Translatef(-1.0, -1.0, 0.0)
 		gl.TexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, fftBinSize, historySize, gl.BGRA, gl.UNSIGNED_INT_8_8_8_8_REV, nil)
@@ -551,7 +550,7 @@ func ShiftFFTHistory(freqDiff float64) {
 
 	if math.Abs(freqDiff) < sampleRate {
 		freqRes := sampleRate / float64(fftSize)
-		shift := int(freqDiff/freqRes)
+		shift := int(freqDiff / freqRes)
 		// log.Printf("shift %d", shift)
 		buffer.Do(func(v interface{}) {
 			bytes := v.([]uint32)
