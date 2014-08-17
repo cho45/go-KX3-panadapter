@@ -33,6 +33,8 @@ var (
 	kx3          *kx3hq.KX3Controller
 	rigFrequency float64
 	rigMode      string
+
+	forceUpdateEntire bool
 )
 
 func StartFFT(fftSize int) (chan []float64, chan error) {
@@ -341,10 +343,21 @@ func Start(c *Config) {
 
 		historyBuffer.Bind(gl.PIXEL_PACK_BUFFER)
 		historyBitmap := *(*[]uint32)(gl.MapBufferSlice(gl.PIXEL_PACK_BUFFER, gl.READ_WRITE, 4))
-		// Shift 1px
-		copy(historyBitmap[:(fftBinSize*(historySize-1))], historyBitmap[fftBinSize:])
-		// And append current line
-		copy(historyBitmap[(fftBinSize*(historySize-1)):], current)
+		if !forceUpdateEntire {
+			// Shift 1px
+			copy(historyBitmap[:(fftBinSize*(historySize-1))], historyBitmap[fftBinSize:])
+			// And append current line
+			copy(historyBitmap[(fftBinSize*(historySize-1)):], current)
+		} else {
+			log.Println("forceUpdateEntire")
+			// draw fft history
+			i := 0
+			buffer.Do(func(v interface{}) {
+				copy(historyBitmap[i:], v.([]uint32))
+				i += fftBinSize
+			})
+			forceUpdateEntire = false
+		}
 		gl.UnmapBuffer(gl.PIXEL_PACK_BUFFER)
 		historyBuffer.Unbind(gl.PIXEL_PACK_BUFFER)
 
@@ -427,7 +440,7 @@ func Start(c *Config) {
 		// done
 		glfw.SwapBuffers()
 
-		buffer = buffer.Prev()
+		buffer = buffer.Next()
 	}
 }
 
@@ -578,4 +591,6 @@ func ShiftFFTHistory(freqDiff float64) {
 			}
 		})
 	}
+
+	forceUpdateEntire = true
 }
