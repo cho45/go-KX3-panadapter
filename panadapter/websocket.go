@@ -41,17 +41,17 @@ type SentEvent struct {
 
 
 func ServWebSocket() error {
-	MAX_BUFFER_SIZE := 8
-	MIN_BUFFER_SIZE := 2
+	MAX_BUFFER_SIZE := 9
+	MIN_BUFFER_SIZE := 5
 
 	localBuffer := make(chan byte, 255)
-	deviceBuffer := make([]byte, 10)
+	deviceBuffer := make([]byte, 0)
 	// decodeBuffer := make(chan byte)
 	sendBuffer := make([]byte, MAX_BUFFER_SIZE)
 	pubsub := pubsub.New()
 
 	go func() {
-		for kx3.Status == kx3hq.STATUS_OPENED {
+		for {
 			ret, err := kx3.Command("TB;", kx3hq.RSP_TB)
 			if err != nil {
 				time.Sleep(100 * time.Millisecond)
@@ -108,8 +108,6 @@ func ServWebSocket() error {
 			localBuffer <- byte(char)
 		}
 	}
-
-	port := 51234
 
 	http.Handle("/", websocket.Handler(func(ws *websocket.Conn) {
 		log.Printf("New websocket: %v", ws)
@@ -170,8 +168,8 @@ func ServWebSocket() error {
 		}
 		log.Printf("Closed websocket: %v", ws)
 	}))
-	log.Printf("websocket server listen: %d", port)
-	err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
+	log.Printf("websocket server listen: %s", config.Server.Listen)
+	err := http.ListenAndServe(config.Server.Listen, nil)
 	if err != nil {
 		log.Printf("http.ListenAndServe failed with  %s", err)
 	}

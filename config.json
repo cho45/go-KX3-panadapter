@@ -12,5 +12,8 @@
 	"input" : {
 		"name" : "Sound Blaster Easy Record",
 		"samplerate" : 48000
+	},
+	"server" : {
+		"listen" : ":51234"
 	}
 }

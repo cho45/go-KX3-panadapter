@@ -6,11 +6,12 @@ import (
 )
 
 type Config struct {
-	Port        PortConfig   `json:"port"`
-	Window      WindowConfig `json:"window"`
-	HistorySize int          `json:"historySize"`
-	FftSize     int          `json:"fftSize"`
-	Input       *InputConfig `json:"input",omitempty`
+	Port        PortConfig    `json:"port"`
+	Window      WindowConfig  `json:"window"`
+	HistorySize int           `json:"historySize"`
+	FftSize     int           `json:"fftSize"`
+	Server      *ServerConfig `json:"server",omitempty`
+	Input       *InputConfig  `json:"input",omitempty`
 }
 
 type PortConfig struct {
@@ -26,6 +27,10 @@ type WindowConfig struct {
 type InputConfig struct {
 	Name       string  `json:"name"`
 	SampleRate float64 `json:"samplerate"`
+}
+
+type ServerConfig struct {
+	Listen string `json:"listen"`
 }
 
 func ReadConfig(filename string) (*Config, error) {

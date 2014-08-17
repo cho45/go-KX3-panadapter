@@ -218,7 +218,10 @@ func Start(c *Config) {
 	fftBinSize := fftSize
 
 	go Serial()
-	go ServWebSocket()
+
+	if config.Server != nil {
+		go ServWebSocket()
+	}
 
 	if err = glfw.Init(); err != nil {
 		log.Fatalf("%v\n", err)

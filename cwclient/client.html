@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html ng-app="App">
+	<head>
+		<title></title>
+		<meta charset="utf-8"/>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+
+		<script type="text/javascript" src="assets/jquery-2.1.1.js"></script>
+		<link rel="stylesheet" href="assets/bootstrap/css/bootstrap.css">
+		<link rel="stylesheet" href="assets/bootstrap/css/bootstrap-theme.css">
+		<script src="assets/bootstrap/js/bootstrap.js"></script>
+		<script src="assets/angular.js"></script>
+		<script src="assets/underscore.js"></script>
+		<script src="assets/keyString.js"></script>
+		<script src="client.js"></script>
+
+		<link rev="made" href="mailto:cho45@lowreal.net"/>
+		<link rel="shortcut icon" href="/favicon.ico" type="image/x-icon"/>
+
+		<!--[if lt IE 9]>
+		<script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+		<![endif]-->
+	</head>
+	<body ng-controller="MainCtrl">
+		<div class="container">
+			<div class="page-header">
+				<h1>Control Morse Device</h1>
+			</div>
+
+			<form class="form-horizontal" style="">
+				<div style="float: right; width: 300px">
+					<div class="form-group form-group-sm">
+						<label class="col-sm-4 control-label">Speed</label>
+						<div class="col-sm-8">
+							<div class="input-group">
+								<input type="number" min="5" max="50" class="form-control" ng-model="speed"/>
+								<div class="input-group-addon">wpm</div>
+							</div>
+						</div>
+					</div>
+					<div class="form-group form-group-sm">
+						<label class="col-sm-4 control-label">Inhibit</label>
+						<div class="col-sm-8">
+							<div class="input-group">
+								<input type="number" min="5" max="50" class="form-control" ng-model="inhibit_time"/>
+								<div class="input-group-addon">msec</div>
+							</div>
+						</div>
+					</div>
+					<div class="form-group form-group-sm">
+						<label class="col-sm-4 control-label">Side tone</label>
+						<div class="col-sm-8">
+							<div class="input-group">
+								<div class="input-group-addon">
+									<input type="checkbox" class="" ng-model="toneEnabled"/>
+								</div>
+								<input type="number" min="100" max="1000" class="form-control" ng-model="tone"/>
+								<div class="input-group-addon">Hz</div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div style="margin-right: 320px">
+					<div class="form-group">
+						<div class="col-sm-12">
+							<input type="text" class="form-control" placeholder="input" id="input"/>
+							<button class="btn btn-default" ng-click="send('EX EX EX DE JH1UMV JH1UMV JH1UMV                                            VVVVVVVVV JH1UMV')">EX</button>
+							<button class="btn btn-default" ng-click="send('QRL? ')">QRL?</button>
+							<button class="btn btn-default" ng-click="send('DE JH1UMV ')">DE</button>
+							<button class="btn btn-default" ng-click="send('CQ CQ DE JH1UMV JH1UMV PSE K ')">CQ</button>
+							<button class="btn btn-default" ng-click="send('GM UR 599 5NN BK')">599 BK</button>
+							<button class="btn btn-default" ng-click="send('73 TU E E')">73</button>
+						</div>
+						<div class="col-sm-12">
+							<pre class="form-control-static"><span class="sent">{{ sent.join('') }}</span><span class="buffer">{{ buffer }}</span><span class="queue">{{ queue }}</span></pre>
+							<style scoped>
+								.sent {
+								font-weight: bold;
+								color: #999;
+								}
+
+								.buffer {
+								font-weight: bold;
+								background: #ffff00;
+								color: #000;
+								}
+
+								.queue {
+								font-weight: bold;
+								color: #666;
+								}
+							</style>
+						</div>
+					</div>
+				</div>
+
+			</form>
+		</div>
+	</body>
+</html>
