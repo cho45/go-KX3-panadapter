@@ -165,12 +165,13 @@ func (s *KX3Controller) Close() error {
 	log.Println("KX3Cotroller#Close")
 	if s.Status != STATUS_CLOSED {
 		s.Status = STATUS_CLOSED
-		err := s.port.Close()
+		// kernel panic
+		// err := s.port.Close()
+		// log.Printf("Closed with: %s", err)
 		close(s.resultCh)
 		close(s.writeCh)
 		close(s.writeResCh)
-		log.Printf("Closed with: %s", err)
-		return err
+		return nil
 	} else {
 		return errors.New("already closed")
 	}
