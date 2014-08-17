@@ -336,31 +336,33 @@ func Start(c *Config) {
 
 		gl.Clear(gl.COLOR_BUFFER_BIT)
 
+		gl.Enable(gl.TEXTURE_2D)
+		texture.Bind(gl.TEXTURE_2D)
+
+		historyBuffer.Bind(gl.PIXEL_PACK_BUFFER)
+		historyBitmap := *(*[]uint32)(gl.MapBufferSlice(gl.PIXEL_PACK_BUFFER, gl.READ_WRITE, 1))
+		// Shift 1px
+		copy(historyBitmap[:(fftBinSize*(historySize-1))], historyBitmap[fftBinSize:])
+		// And append current line
+		copy(historyBitmap[(fftBinSize*(historySize-1)):], current)
+		gl.UnmapBuffer(gl.PIXEL_PACK_BUFFER)
+		historyBuffer.Unbind(gl.PIXEL_PACK_BUFFER)
+		
 		historyBuffer.Bind(gl.PIXEL_UNPACK_BUFFER)
-		historyBitmap := *(*[]uint32)(gl.MapBufferSlice(gl.PIXEL_UNPACK_BUFFER, gl.WRITE_ONLY, 1))
-		// draw fft history
-		i := 0
-		buffer.Do(func(v interface{}) {
-			copy(historyBitmap[i:], v.([]uint32))
-			i += fftBinSize
-		})
-		gl.UnmapBuffer(gl.PIXEL_UNPACK_BUFFER)
 
 		gl.PushMatrix()
 		gl.Translatef(-1.0, -1.0, 0.0)
-		gl.Enable(gl.TEXTURE_2D)
-		texture.Bind(gl.TEXTURE_2D)
 		gl.TexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, fftBinSize, historySize, gl.BGRA, gl.UNSIGNED_INT_8_8_8_8_REV, nil)
 		historyBuffer.Unbind(gl.PIXEL_UNPACK_BUFFER)
 		gl.Begin(gl.QUADS)
 		gl.Color3f(1.0, 1.0, 1.0)
-		gl.TexCoord2d(0, 0)
-		gl.Vertex2d(0, 0.5)
-		gl.TexCoord2d(1, 0)
-		gl.Vertex2d(2, 0.5)
-		gl.TexCoord2d(1, 1)
-		gl.Vertex2d(2, 2)
 		gl.TexCoord2d(0, 1)
+		gl.Vertex2d(0, 0.5)
+		gl.TexCoord2d(1, 1)
+		gl.Vertex2d(2, 0.5)
+		gl.TexCoord2d(1, 0)
+		gl.Vertex2d(2, 2)
+		gl.TexCoord2d(0, 0)
 		gl.Vertex2d(0, 2)
 		gl.End()
 		texture.Unbind(gl.TEXTURE_2D)
