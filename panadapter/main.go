@@ -256,7 +256,7 @@ func Start(c *Config) {
 	texture.Bind(gl.TEXTURE_2D)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 	gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
-	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, fftBinSize, historySize, 0, gl.BGRA, gl.UNSIGNED_INT_8_8_8_8_REV, nil)
+	gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGBA, fftBinSize, historySize, 0, gl.RGBA, gl.UNSIGNED_INT_8_8_8_8_REV, nil)
 	texture.Unbind(gl.TEXTURE_2D)
 
 	fftResultChan, listenErrCh := StartFFT(fftSize)
@@ -342,7 +342,7 @@ func Start(c *Config) {
 			}
 
 			// current[i] = uint32(b) << 24 | uint32(g) << 16 | uint32(r) << 8 | 255
-			current[i] = 255<<24 | uint32(r)<<16 | uint32(g)<<8 | uint32(b)<<0
+			current[i] = 255<<24 | uint32(b)<<16 | uint32(g)<<8 | uint32(r)<<0
 		}
 
 		gl.Clear(gl.COLOR_BUFFER_BIT)
@@ -391,7 +391,7 @@ func Start(c *Config) {
 		gl.PushMatrix()
 		gl.Translated(-1.0, -2.5+(pxHeight*float64(currentDrawLine)), 0.0)
 		drawBuffers[currentDrawBuffer].Bind(gl.PIXEL_UNPACK_BUFFER)
-		gl.TexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, fftBinSize, historySize, gl.BGRA, gl.UNSIGNED_INT_8_8_8_8_REV, nil)
+		gl.TexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, fftBinSize, historySize, gl.RGBA, gl.UNSIGNED_INT_8_8_8_8_REV, nil)
 		drawBuffers[currentDrawBuffer].Unbind(gl.PIXEL_UNPACK_BUFFER)
 		gl.Begin(gl.QUADS)
 		gl.TexCoord2d(0, 1)
@@ -405,7 +405,7 @@ func Start(c *Config) {
 		gl.End()
 		gl.Translated(0, (pxHeight * float64(historySize-1)), 0.0)
 		drawBuffers[(currentDrawBuffer+1)%2].Bind(gl.PIXEL_UNPACK_BUFFER)
-		gl.TexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, fftBinSize, historySize, gl.BGRA, gl.UNSIGNED_INT_8_8_8_8_REV, nil)
+		gl.TexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, fftBinSize, historySize, gl.RGBA, gl.UNSIGNED_INT_8_8_8_8_REV, nil)
 		drawBuffers[(currentDrawBuffer+1)%2].Unbind(gl.PIXEL_UNPACK_BUFFER)
 		gl.Begin(gl.QUADS)
 		gl.TexCoord2d(0, 1)
