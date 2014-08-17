@@ -42,18 +42,18 @@ type KX3Controller struct {
 	writeCh    chan string
 	writeResCh chan error
 	reader     *bufio.Reader
-	status     int
 	mutex      *sync.Mutex
+	Status     int
 }
 
 func (s *KX3Controller) Open(name string, baudrate int) error {
-	s.status = STATUS_INIT
+	s.Status = STATUS_INIT
 	port, err := serial.OpenPort(&serial.Config{
 		Name: name,
 		Baud: baudrate,
 	})
 	if err != nil {
-		s.status = STATUS_CLOSED
+		s.Status = STATUS_CLOSED
 		return err
 	}
 	s.port = port
@@ -61,12 +61,12 @@ func (s *KX3Controller) Open(name string, baudrate int) error {
 	s.resultCh = make(chan string)
 	s.writeCh = make(chan string, 1)
 	s.writeResCh = make(chan error, 1)
-	s.status = STATUS_OPENED
+	s.Status = STATUS_OPENED
 
 	// reader thread
 	go func() {
 		reader := bufio.NewReaderSize(s.port, 4096)
-		for s.status == STATUS_OPENED {
+		for s.Status == STATUS_OPENED {
 			command, err := reader.ReadString(';')
 			if err != nil {
 				if err == io.EOF {
@@ -101,7 +101,7 @@ func (s *KX3Controller) Open(name string, baudrate int) error {
 
 	// writer thread
 	go func() {
-		for s.status == STATUS_OPENED {
+		for s.Status == STATUS_OPENED {
 			command := <-s.writeCh
 			_, err = s.port.Write([]byte(command))
 			s.writeResCh <- err
@@ -114,7 +114,7 @@ func (s *KX3Controller) Open(name string, baudrate int) error {
 // Command("FA;")
 // Command("FA00007100000;FA;")
 func (s *KX3Controller) Command(command string, re *regexp.Regexp) ([]string, error) {
-	if s.status != STATUS_OPENED {
+	if s.Status != STATUS_OPENED {
 		return nil, errors.New("invalid status")
 	}
 	s.mutex.Lock()
@@ -163,8 +163,8 @@ func (s *KX3Controller) Send(command string) error {
 
 func (s *KX3Controller) Close() error {
 	log.Println("KX3Cotroller#Close")
-	if s.status != STATUS_CLOSED {
-		s.status = STATUS_CLOSED
+	if s.Status != STATUS_CLOSED {
+		s.Status = STATUS_CLOSED
 		err := s.port.Close()
 		close(s.resultCh)
 		close(s.writeCh)

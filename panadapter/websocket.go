@@ -51,9 +51,10 @@ func ServWebSocket() error {
 	pubsub := pubsub.New()
 
 	go func() {
-		for {
+		for kx3.Status == kx3hq.STATUS_OPENED {
 			ret, err := kx3.Command("TB;", kx3hq.RSP_TB)
 			if err != nil {
+				time.Sleep(100 * time.Millisecond)
 				continue
 			}
 
@@ -171,5 +172,8 @@ func ServWebSocket() error {
 	}))
 	log.Printf("websocket server listen: %d", port)
 	err := http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
+	if err != nil {
+		log.Printf("http.ListenAndServe failed with  %s", err)
+	}
 	return err
 }

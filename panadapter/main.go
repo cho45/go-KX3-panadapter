@@ -352,7 +352,6 @@ func Start(c *Config) {
 		gl.Vertex2d(0, 2)
 		gl.End()
 		texture.Unbind(gl.TEXTURE_2D)
-
 		gl.PopMatrix()
 
 		// draw grid
@@ -398,10 +397,6 @@ func Start(c *Config) {
 				drawString(w/2.0+w*float32(freq/sampleRate)-20, h*0.75, 12, fmt.Sprintf("%fMHz", (rigFrequency+freq)/1000/1000))
 				drawString(w/2.0-w*float32(freq/sampleRate)-20, h*0.75, 12, fmt.Sprintf("%fMHz", (rigFrequency-freq)/1000/1000))
 			}
-
-			//			gl.Color4f(1, 1, 1, 1)
-			//			gl.Rectd(10, 10, 100, 100)
-			//			gl.Rectd(-10, -10, 10, 10)
 
 			// Mouse
 			x, y := glfw.MousePos()
