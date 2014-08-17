@@ -549,10 +549,10 @@ func ShiftFFTHistory(freqDiff float64) {
 
 	if math.Abs(freqDiff) < sampleRate {
 		freqRes := sampleRate / float64(fftSize)
-		shift := int(freqDiff/freqRes) * 3
+		shift := int(freqDiff/freqRes)
 		// log.Printf("shift %d", shift)
 		buffer.Do(func(v interface{}) {
-			bytes := v.([]byte)
+			bytes := v.([]uint32)
 			if shift < 0 {
 				for i := len(bytes) - 1; -shift < i; i-- {
 					bytes[i] = bytes[i+shift]
