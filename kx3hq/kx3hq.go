@@ -148,6 +148,7 @@ clear:
 	case <-time.After(1000 * time.Millisecond):
 		return nil, errors.New("timeout")
 	}
+	return nil, errors.New("unknown")
 }
 
 func (s *KX3Controller) Send(command string) error {
@@ -175,4 +176,5 @@ func (s *KX3Controller) Close() error {
 	} else {
 		return errors.New("already closed")
 	}
+	return nil
 }
