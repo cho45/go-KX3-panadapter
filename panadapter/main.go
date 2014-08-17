@@ -215,8 +215,8 @@ func Start(c *Config) {
 	historySize := config.HistorySize
 	fftBinSize := fftSize
 
-	go Serial()
-	go ServWebSocket()
+//	go Serial()
+//	go ServWebSocket()
 
 	if err = glfw.Init(); err != nil {
 		log.Fatalf("%v\n", err)
@@ -235,6 +235,13 @@ func Start(c *Config) {
 	glfw.SetKeyCallback(onKey)
 	glfw.SetMouseButtonCallback(onMouseBtn)
 	glfw.SetWindowSizeCallback(onResize)
+	gl.Init()
+
+	historyBuffer := gl.GenBuffer()
+	historyBuffer.Bind(gl.PIXEL_UNPACK_BUFFER)
+	gl.BufferData(gl.PIXEL_UNPACK_BUFFER,  fftBinSize*historySize*3, nil, gl.DYNAMIC_DRAW)
+	historyBuffer.Unbind(gl.PIXEL_UNPACK_BUFFER)
+	texture := gl.GenTexture()
 
 	fftResultChan, listenErrCh := StartFFT(fftSize)
 	if err = <-listenErrCh; err != nil {
@@ -247,10 +254,6 @@ func Start(c *Config) {
 	for p := buffer.Next(); p != buffer; p = p.Next() {
 		p.Value = make([]byte, fftBinSize*3)
 	}
-
-	historyBitmap := make([]byte, fftBinSize*historySize*3)
-
-	texture := gl.GenTexture()
 
 	file, err := gas.Abs("github.com/cho45/go-KX3-panadapter/assets/Roboto/Roboto-Bold.ttf")
 	if err != nil {
@@ -326,18 +329,23 @@ func Start(c *Config) {
 
 		gl.Clear(gl.COLOR_BUFFER_BIT)
 
+		historyBuffer.Bind(gl.PIXEL_PACK_BUFFER)
+		historyBitmap := *(*[]byte)(gl.MapBufferSlice(gl.PIXEL_PACK_BUFFER, gl.WRITE_ONLY, 1))
 		// draw fft history
 		i := 0
 		buffer.Do(func(v interface{}) {
 			copy(historyBitmap[i:], v.([]byte))
 			i += fftBinSize * 3
 		})
+		gl.UnmapBuffer(gl.PIXEL_PACK_BUFFER)
+		historyBuffer.Unbind(gl.PIXEL_PACK_BUFFER)
 
 		gl.PushMatrix()
 		gl.Translatef(-1.0, -1.0, 0.0)
 		gl.Enable(gl.TEXTURE_2D)
 		texture.Bind(gl.TEXTURE_2D)
-		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGB, fftBinSize, historySize, 0, gl.RGB, gl.UNSIGNED_BYTE, historyBitmap)
+		historyBuffer.Bind(gl.PIXEL_UNPACK_BUFFER)
+		gl.TexImage2D(gl.TEXTURE_2D, 0, gl.RGB, fftBinSize, historySize, 0, gl.RGB, gl.UNSIGNED_BYTE, nil)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
 		gl.TexParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
 		gl.Begin(gl.QUADS)
@@ -352,6 +360,7 @@ func Start(c *Config) {
 		gl.Vertex2d(0, 2)
 		gl.End()
 		texture.Unbind(gl.TEXTURE_2D)
+		historyBuffer.Unbind(gl.PIXEL_UNPACK_BUFFER)
 		gl.PopMatrix()
 
 		// draw grid
