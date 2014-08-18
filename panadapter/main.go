@@ -424,12 +424,14 @@ func Start(c *Config) {
 		gl.Color4d(0, 0, 0, 1)
 		gl.Rectd(-1, -0.5, 1, -1)
 
+		gridStep := math.Ceil(sampleRate / 50000.0) * 5000.0
+
 		// draw grid
 		withPixelContext(func() {
 			w, h := GetWindowSizeF()
 			gl.Begin(gl.LINES)
 			for freq := 0.0; freq < sampleRate/2; freq += 1000.0 {
-				if int(freq)%5000 == 0 {
+				if int(freq)%int(gridStep) == 0 {
 					gl.Color4f(1.0, 1.0, 1.0, 0.3)
 				} else {
 					gl.Color4f(1.0, 1.0, 1.0, 0.1)
@@ -463,7 +465,7 @@ func Start(c *Config) {
 		withPixelContext(func() {
 			// Frequency labels
 			w, h := GetWindowSizeF()
-			for freq := 0.0; freq < sampleRate/2; freq += 5000.0 {
+			for freq := 0.0; freq < sampleRate/2; freq += gridStep {
 				drawString(w/2.0+w*float32(freq/sampleRate)-20, h*0.75, 12, fmt.Sprintf("%fMHz", (rigFrequency+freq)/1000/1000))
 				drawString(w/2.0-w*float32(freq/sampleRate)-20, h*0.75, 12, fmt.Sprintf("%fMHz", (rigFrequency-freq)/1000/1000))
 			}
