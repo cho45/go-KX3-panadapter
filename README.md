@@ -1,20 +1,18 @@
 go KX3 panadapter
 =================
 
-alpha
+alpha (still development)
 
 <img src="https://dl.dropboxusercontent.com/u/673746/Screenshots/2014-08-17%2019.50.28.png"/>
 
-
-<iframe width="960" height="720" src="//www.youtube.com/embed/x85sMfEmhzo" frameborder="0" allowfullscreen></iframe>
-
+<a href="//www.youtube.com/embed/x85sMfEmhzo">Movie</a>
 
 Features
 ========
 
 Main features:
 
- * FFT and waterfall view (bandwidth depends on sandcard)
+ * FFT and waterfall view (bandwidth depends on your soundcard)
  * Change center (local oscillator) frequency by clicking FFT view
 
 And some features included for utility:
