@@ -4,23 +4,25 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"github.com/tarm/goserial"
 	"io"
 	"log"
 	"regexp"
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/mattn/go-pubsub"
+	"github.com/tarm/goserial"
 )
 
 const (
-	MODE_LSB = "1"
-	MODE_USB = "2"
-	MODE_CW = "3"
-	MODE_FM = "4"
-	MODE_AM = "5"
-	MODE_DATA = "6"
-	MODE_CW_REV = "7"
+	MODE_LSB      = "1"
+	MODE_USB      = "2"
+	MODE_CW       = "3"
+	MODE_FM       = "4"
+	MODE_AM       = "5"
+	MODE_DATA     = "6"
+	MODE_CW_REV   = "7"
 	MODE_DATA_REV = "8"
 )
 
@@ -39,18 +41,49 @@ var (
 	RSP_IS = regexp.MustCompile("^IS(.)([0-9]{4});$")
 )
 
+var (
+	ErrTimeout       = errors.New("timeout")
+	ErrRigIsBusy     = errors.New("rig is busy")
+	ErrInvalidStatus = errors.New("invalid status")
+	ErrAlreayClosed  = errors.New("already closed")
+)
+
 type KX3Controller struct {
 	port       io.ReadWriteCloser
 	resultCh   chan string
 	writeCh    chan string
 	writeResCh chan error
-	reader     *bufio.Reader
 	mutex      *sync.Mutex
+	pubsub     *pubsub.PubSub
 	Status     int
+
+	DeviceBuffer []byte
+	localBuffer  chan byte
+}
+
+type EventStatusChange struct {
+	Status int
+}
+
+type EventTextSent struct {
+	Text        string
+	BufferCount int
+}
+
+type EventTextDecoded struct {
+	Text string
+}
+
+func New() *KX3Controller {
+	return &KX3Controller{
+		mutex:  &sync.Mutex{},
+		pubsub: pubsub.New(),
+		Status: STATUS_INIT,
+	}
 }
 
 func (s *KX3Controller) Open(name string, baudrate int) error {
-	s.Status = STATUS_INIT
+	s.pubsub.Pub(&EventStatusChange{Status: s.Status})
 	port, err := serial.OpenPort(&serial.Config{
 		Name: name,
 		Baud: baudrate,
@@ -60,11 +93,11 @@ func (s *KX3Controller) Open(name string, baudrate int) error {
 		return err
 	}
 	s.port = port
-	s.mutex = &sync.Mutex{}
 	s.resultCh = make(chan string)
 	s.writeCh = make(chan string, 1)
 	s.writeResCh = make(chan error, 1)
 	s.Status = STATUS_OPENED
+	s.pubsub.Pub(&EventStatusChange{Status: s.Status})
 
 	// reader thread
 	go func() {
@@ -109,7 +142,9 @@ func (s *KX3Controller) Open(name string, baudrate int) error {
 			_, err = s.port.Write([]byte(command))
 			s.writeResCh <- err
 		}
+		log.Println("writer thread is done")
 	}()
+
 	return nil
 }
 
@@ -118,7 +153,7 @@ func (s *KX3Controller) Open(name string, baudrate int) error {
 // Command("FA00007100000;FA;")
 func (s *KX3Controller) Command(command string, re *regexp.Regexp) ([]string, error) {
 	if s.Status != STATUS_OPENED {
-		return nil, errors.New("invalid status")
+		return nil, ErrInvalidStatus
 	}
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
@@ -146,12 +181,11 @@ clear:
 				return nil, fmt.Errorf("regexp unmatched: %v -> \"%s\"", re, ret)
 			}
 		} else {
-			return nil, errors.New("rig is busy")
+			return nil, ErrRigIsBusy
 		}
 	case <-time.After(1000 * time.Millisecond):
-		return nil, errors.New("timeout")
+		return nil, ErrTimeout
 	}
-	return nil, errors.New("unknown")
 }
 
 func (s *KX3Controller) Send(command string) error {
@@ -165,6 +199,89 @@ func (s *KX3Controller) Send(command string) error {
 	return nil
 }
 
+func (s *KX3Controller) StartTextBufferObserver() {
+	MAX_BUFFER_SIZE := 9
+	MIN_BUFFER_SIZE := 5
+
+	s.localBuffer = make(chan byte, 255)
+	s.DeviceBuffer = make([]byte, 0)
+	sendBuffer := make([]byte, MAX_BUFFER_SIZE)
+
+	log.Println("StartTextBufferObserver")
+	go func() {
+		for s.Status == STATUS_OPENED {
+			ret, err := s.Command("TB;", RSP_TB)
+			if err != nil {
+				time.Sleep(100 * time.Millisecond)
+				continue
+			}
+
+			bufferedCount, err := strconv.ParseInt(ret[1], 10, 32)
+			if err != nil {
+				panic(err)
+			}
+
+			if ret[3] != "" {
+				// device decoded texts
+				s.pubsub.Pub(&EventTextDecoded{Text: ret[3]})
+			}
+
+			sent := s.DeviceBuffer[:len(s.DeviceBuffer)-int(bufferedCount)]
+			s.DeviceBuffer = s.DeviceBuffer[len(s.DeviceBuffer)-int(bufferedCount):]
+			for _, char := range sent {
+				s.pubsub.Pub(&EventTextSent{
+					Text:        string(char),
+					BufferCount: int(bufferedCount),
+				})
+			}
+
+			// fill device text buffer
+			if int(bufferedCount) <= MIN_BUFFER_SIZE && 0 < len(s.localBuffer) {
+			exhaust:
+				for {
+					select {
+					case char := <-s.localBuffer:
+						sendBuffer = append(sendBuffer, char)
+						if len(sendBuffer) >= MAX_BUFFER_SIZE {
+							break exhaust
+						}
+					default:
+						break exhaust
+					}
+				}
+				if len(sendBuffer) > 0 {
+					log.Printf("Sending... %s", sendBuffer)
+					s.Send(fmt.Sprintf("KY %s;", sendBuffer))
+					s.DeviceBuffer = append(s.DeviceBuffer, sendBuffer...)
+					sendBuffer = sendBuffer[:0]
+				}
+			}
+
+			time.Sleep(100 * time.Millisecond)
+		}
+		log.Println("TextBufferObserver done")
+	}()
+}
+
+func (s *KX3Controller) SendText(text string) error {
+	for _, char := range text {
+		s.localBuffer <- byte(char)
+	}
+	return nil
+}
+
+func (s *KX3Controller) StopTX() error {
+clear:
+	for {
+		select {
+		case <-s.localBuffer:
+		default:
+			break clear
+		}
+	}
+	return s.Send("RX;")
+}
+
 func (s *KX3Controller) Close() error {
 	log.Println("KX3Cotroller#Close")
 	if s.Status != STATUS_CLOSED {
@@ -175,9 +292,18 @@ func (s *KX3Controller) Close() error {
 		close(s.resultCh)
 		close(s.writeCh)
 		close(s.writeResCh)
+		s.pubsub.Pub(&EventStatusChange{Status: s.Status})
 		return nil
 	} else {
-		return errors.New("already closed")
+		return ErrAlreayClosed
 	}
 	return nil
+}
+
+func (s *KX3Controller) On(f interface{}) {
+	s.pubsub.Sub(f)
+}
+
+func (s *KX3Controller) Off(f interface{}) {
+	s.pubsub.Leave(f)
 }

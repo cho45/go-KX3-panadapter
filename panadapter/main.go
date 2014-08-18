@@ -163,12 +163,13 @@ func StartFFT(fftSize int) (chan []float64, chan error) {
 
 func Serial() {
 	connect := func() {
-		kx3 = &kx3hq.KX3Controller{}
+		kx3 = kx3hq.New()
 		if err := kx3.Open(config.Port.Name, config.Port.Baudrate); err != nil {
 			log.Printf("Error on Open: %s", err)
 			return
 		}
 		log.Printf("Connected")
+		kx3.StartTextBufferObserver()
 		defer kx3.Close()
 		var err error
 		var freq float64

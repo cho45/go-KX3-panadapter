@@ -1,0 +1,19 @@
+{
+	"port" : {
+		"name" : "/dev/tty.usbserial-A402PY11",
+		"baudrate" : 38400
+	},
+	"window" : {
+		"width" : 1410,
+		"height" : 600
+	},
+	"historySize" : 500,
+	"fftSize" : 8192,
+	"input" : {
+		"name" : "UR22",
+		"samplerate" : 192000
+	},
+	"server" : {
+		"listen" : ":51234"
+	}
+}
