@@ -3,7 +3,7 @@ go KX3 panadapter
 
 alpha (still development)
 
-<img src="https://dl.dropboxusercontent.com/u/673746/Screenshots/2014-08-17%2019.50.28.png"/>
+<img src="https://dl.dropboxusercontent.com/u/673746/Screenshots/2014-08-19%2020.59.01.png"/>
 
 <a href="//www.youtube.com/embed/x85sMfEmhzo">Movie</a>
 

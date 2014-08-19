@@ -27,6 +27,7 @@ type WindowConfig struct {
 type InputConfig struct {
 	Name       string  `json:"name"`
 	SampleRate float64 `json:"samplerate"`
+	DynamicRange float64 `json:"dynamicRange"`
 }
 
 type ServerConfig struct {

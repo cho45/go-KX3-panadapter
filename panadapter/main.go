@@ -210,7 +210,7 @@ func Start(c *Config) {
 	config = c
 
 	running = true
-	dynamicRange = 80.0
+	dynamicRange = config.Input.DynamicRange
 
 	fftSize = config.FftSize
 	height := config.Window.Height

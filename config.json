@@ -11,6 +11,7 @@
 	"fftSize" : 2048,
 	"input" : {
 		"name" : "Sound Blaster Easy Record",
+		"dynamicRange" : 80,
 		"samplerate" : 48000
 	},
 	"server" : {
