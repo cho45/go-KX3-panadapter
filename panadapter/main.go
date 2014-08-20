@@ -41,10 +41,15 @@ func StartFFT(fftSize int) (chan []float64, chan error) {
 	ch := make(chan []float64, 1)
 	errCh := make(chan error)
 
+	halfFftSize := fftSize / 2
 	phaseI := make([]float64, fftSize)
 	phaseQ := make([]float64, fftSize)
 	complexIQ := make([]complex128, fftSize)
 	fftResult := make([]float64, fftSize)
+	fftCorrection := func(freq float64) float64 {
+		return math.Pow(2.0, freq/41000)
+	}
+
 	go func() {
 		portaudio.Initialize()
 		defer portaudio.Terminate()
@@ -113,6 +118,8 @@ func StartFFT(fftSize int) (chan []float64, chan error) {
 
 		sampleRate = stream.Info().SampleRate
 		log.Printf("Opened : %s %.1f", device.Name, sampleRate)
+		fftBinBandWidth := sampleRate / float64(fftSize)
+		log.Println(fftBinBandWidth)
 
 		if err = stream.Start(); err != nil {
 			errCh <- err
@@ -144,14 +151,14 @@ func StartFFT(fftSize int) (chan []float64, chan error) {
 
 			result := fft.FFT(complexIQ)
 			// real
-			for i := 0; i < len(complexIQ)/2; i++ {
+			for i := 0; i < halfFftSize; i++ {
 				power := math.Sqrt(real(result[i])*real(result[i]) + imag(result[i])*imag(result[i]))
-				fftResult[i+len(complexIQ)/2] = 20 * math.Log10(power)
+				fftResult[i+halfFftSize] = 20 * math.Log10(power * fftCorrection(float64(i) * fftBinBandWidth))
 			}
 			// imag
-			for i := len(complexIQ) / 2; i < len(complexIQ); i++ {
+			for i := halfFftSize; i < fftSize; i++ {
 				power := math.Sqrt(real(result[i])*real(result[i]) + imag(result[i])*imag(result[i]))
-				fftResult[i-len(complexIQ)/2] = 20 * math.Log10(power)
+				fftResult[i-halfFftSize] = 20 * math.Log10(power * fftCorrection(float64(fftSize-i) * fftBinBandWidth))
 			}
 
 			ch <- fftResult
@@ -424,7 +431,7 @@ func Start(c *Config) {
 		gl.Color4d(0, 0, 0, 1)
 		gl.Rectd(-1, -0.5, 1, -1)
 
-		gridStep := math.Ceil(sampleRate / 50000.0) * 5000.0
+		gridStep := math.Ceil(sampleRate/50000.0) * 5000.0
 
 		// draw grid
 		withPixelContext(func() {
