@@ -293,7 +293,7 @@ func Start(c *Config) {
 		defer fonts[i].Release()
 	}
 
-	currentDrawBuffer := 0
+	currentDrawBufferIndex := 0
 	currentDrawLine := 0
 
 	for running && glfw.WindowParam(glfw.Opened) == 1 {
@@ -360,7 +360,7 @@ func Start(c *Config) {
 		texture.Bind(gl.TEXTURE_2D)
 
 		if !forceUpdateEntire {
-			drawBuffer := drawBuffers[currentDrawBuffer]
+			drawBuffer := drawBuffers[currentDrawBufferIndex]
 			drawBuffer.Bind(gl.PIXEL_UNPACK_BUFFER)
 			historyBitmap := *(*[]uint32)(gl.MapBufferSlice(gl.PIXEL_UNPACK_BUFFER, gl.READ_WRITE, 4))
 			copy(historyBitmap[currentDrawLine*fftSize:], current)
@@ -370,7 +370,7 @@ func Start(c *Config) {
 			currentDrawLine++
 			if currentDrawLine >= historySize {
 				currentDrawLine = 0
-				currentDrawBuffer = (currentDrawBuffer + 1) % 2
+				currentDrawBufferIndex = (currentDrawBufferIndex + 1) % 2
 			}
 		} else {
 			drawBuffer := drawBuffers[0]
@@ -386,7 +386,7 @@ func Start(c *Config) {
 			drawBuffer.Unbind(gl.PIXEL_UNPACK_BUFFER)
 
 			currentDrawLine = 0
-			currentDrawBuffer = 1
+			currentDrawBufferIndex = 1
 
 			forceUpdateEntire = false
 		}
@@ -398,9 +398,9 @@ func Start(c *Config) {
 
 		gl.PushMatrix()
 		gl.Translated(-1.0, -2.5+(pxHeight*float64(currentDrawLine)), 0.0)
-		drawBuffers[currentDrawBuffer].Bind(gl.PIXEL_UNPACK_BUFFER)
+		drawBuffers[currentDrawBufferIndex].Bind(gl.PIXEL_UNPACK_BUFFER)
 		gl.TexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, fftBinSize, historySize, gl.RGBA, gl.UNSIGNED_INT_8_8_8_8_REV, nil)
-		drawBuffers[currentDrawBuffer].Unbind(gl.PIXEL_UNPACK_BUFFER)
+		drawBuffers[currentDrawBufferIndex].Unbind(gl.PIXEL_UNPACK_BUFFER)
 		gl.Begin(gl.QUADS)
 		gl.TexCoord2d(0, 1)
 		gl.Vertex2d(0, 2-historyHeight)
@@ -412,9 +412,9 @@ func Start(c *Config) {
 		gl.Vertex2d(0, 2)
 		gl.End()
 		gl.Translated(0, (pxHeight * float64(historySize-1)), 0.0)
-		drawBuffers[(currentDrawBuffer+1)%2].Bind(gl.PIXEL_UNPACK_BUFFER)
+		drawBuffers[(currentDrawBufferIndex+1)%2].Bind(gl.PIXEL_UNPACK_BUFFER)
 		gl.TexSubImage2D(gl.TEXTURE_2D, 0, 0, 0, fftBinSize, historySize, gl.RGBA, gl.UNSIGNED_INT_8_8_8_8_REV, nil)
-		drawBuffers[(currentDrawBuffer+1)%2].Unbind(gl.PIXEL_UNPACK_BUFFER)
+		drawBuffers[(currentDrawBufferIndex+1)%2].Unbind(gl.PIXEL_UNPACK_BUFFER)
 		gl.Begin(gl.QUADS)
 		gl.TexCoord2d(0, 1)
 		gl.Vertex2d(0, 0.5)
