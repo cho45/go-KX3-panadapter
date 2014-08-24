@@ -362,7 +362,7 @@ func Start(c *Config) {
 		if !forceUpdateEntire {
 			drawBuffer := drawBuffers[currentDrawBufferIndex]
 			drawBuffer.Bind(gl.PIXEL_UNPACK_BUFFER)
-			historyBitmap := *(*[]uint32)(gl.MapBufferSlice(gl.PIXEL_UNPACK_BUFFER, gl.READ_WRITE, 4))
+			historyBitmap := *(*[]uint32)(gl.MapBufferSlice(gl.PIXEL_UNPACK_BUFFER, gl.WRITE_ONLY, 4))
 			copy(historyBitmap[currentDrawLine*fftSize:], current)
 			gl.UnmapBuffer(gl.PIXEL_UNPACK_BUFFER)
 			drawBuffer.Unbind(gl.PIXEL_UNPACK_BUFFER)
@@ -375,7 +375,7 @@ func Start(c *Config) {
 		} else {
 			drawBuffer := drawBuffers[0]
 			drawBuffer.Bind(gl.PIXEL_UNPACK_BUFFER)
-			historyBitmap := *(*[]uint32)(gl.MapBufferSlice(gl.PIXEL_UNPACK_BUFFER, gl.READ_WRITE, 4))
+			historyBitmap := *(*[]uint32)(gl.MapBufferSlice(gl.PIXEL_UNPACK_BUFFER, gl.WRITE_ONLY, 4))
 			// draw fft history
 			i := 0
 			buffer.Do(func(v interface{}) {
