@@ -1,3 +1,5 @@
+<!--#!chrome-cli reload && echo 
+-->
 <!DOCTYPE html>
 <html ng-app="App">
 	<head>
@@ -12,6 +14,7 @@
 		<script src="assets/angular.js"></script>
 		<script src="assets/underscore.js"></script>
 		<script src="assets/keyString.js"></script>
+		<script src="assets/ui-bootstrap-tpls-0.11.0.js"></script>
 		<script src="client.js"></script>
 
 		<link rev="made" href="mailto:cho45@lowreal.net"/>
@@ -23,11 +26,7 @@
 	</head>
 	<body ng-controller="MainCtrl">
 		<div class="container">
-			<div class="page-header">
-				<h1>Control Morse Device</h1>
-			</div>
-
-			<form class="form-horizontal" style="">
+			<form class="form-horizontal" style="padding: 10px">
 				<div style="float: right; width: 300px">
 					<div class="form-group form-group-sm">
 						<label class="col-sm-4 control-label">Speed</label>
@@ -39,9 +38,21 @@
 						</div>
 					</div>
 					<div class="form-group form-group-sm">
+						<label class="col-sm-4 control-label">Inhibit</label>
+						<div class="col-sm-8">
+							<div class="input-group">
+								<input type="number" min="5" max="50" class="form-control" ng-model="inhibit_time"/>
+								<div class="input-group-addon">msec</div>
+							</div>
+						</div>
+					</div>
+					<div class="form-group form-group-sm">
 						<label class="col-sm-4 control-label">Side tone</label>
 						<div class="col-sm-8">
 							<div class="input-group">
+								<div class="input-group-addon">
+									<input type="checkbox" class="" ng-model="toneEnabled"/>
+								</div>
 								<input type="number" min="100" max="1000" class="form-control" ng-model="tone"/>
 								<div class="input-group-addon">Hz</div>
 							</div>
@@ -52,33 +63,41 @@
 				<div style="margin-right: 320px">
 					<div class="form-group">
 						<div class="col-sm-12">
-							<input type="text" class="form-control" placeholder="input" id="input"/>
-							<button class="btn btn-default" ng-click="send('EX EX EX DE JH1UMV JH1UMV JH1UMV                                            VVVVVVVVV JH1UMV')">EX</button>
-							<button class="btn btn-default" ng-click="send('QRL? ')">QRL?</button>
-							<button class="btn btn-default" ng-click="send('DE JH1UMV ')">DE</button>
-							<button class="btn btn-default" ng-click="send('CQ CQ DE JH1UMV JH1UMV PSE K ')">CQ</button>
-							<button class="btn btn-default" ng-click="send('GM UR 599 5NN BK')">599 BK</button>
-							<button class="btn btn-default" ng-click="send('73 TU E E')">73</button>
-						</div>
-						<div class="col-sm-12">
-							<pre class="form-control-static"><span class="sent">{{ sent.join('') }}</span><span class="buffer">{{ buffer }}</span><span class="queue">{{ queue }}</span></pre>
+							<pre class="form-control-static" style="margin-bottom: 10px; min-height: 3em"><span class="sent">{{ sent.join('') }}</span><span class="buffer">{{ buffer }}</span><span class="queue">{{ queue }}</span></pre>
 							<style scoped>
 								.sent {
-								font-weight: bold;
-								color: #999;
+									font-weight: bold;
+									color: #999;
 								}
 
 								.buffer {
-								font-weight: bold;
-								background: #ffff00;
-								color: #000;
+									font-weight: bold;
+									background: #ffff00;
+									color: #000;
 								}
 
 								.queue {
-								font-weight: bold;
-								color: #666;
+									font-weight: bold;
+									color: #666;
 								}
 							</style>
+						</div>
+						<div class="col-sm-12">
+							<input type="text" class="form-control" placeholder="input" id="input"/>
+						</div>
+						<div class="col-sm-12" style="margin: 10px 0">
+							<div ng-repeat="macro in macros" class="btn-group dropdown" style="margin-right: 5px">
+								<button type="button" class="btn btn-default" ng-click="send(macro.text)">{{ macro.name }}</button>
+								<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+									<span class="caret"></span>
+									<span class="sr-only">Toggle Dropdown</span>
+								</button>
+								<ul class="dropdown-menu" role="menu">
+									<li><a ng-click="send(macro.text)">{{ macro.text }}</a></li>
+									<li class="divider"></li>
+									<li><a ng-click="edit(macro)">Edit…</a></li>
+								</ul>
+							</div>
 						</div>
 					</div>
 				</div>

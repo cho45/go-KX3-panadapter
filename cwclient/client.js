@@ -367,7 +367,7 @@ App.factory('MorseDevice', function ($q) {
 
 App.controller('MainCtrl', function ($scope, $timeout, $document, MorseDevice) {
 	var device = new MorseDevice({
-		server : "ws://localhost:51234/cw",
+		server : "ws://" + location.host + "/cw",
 		autoReconnect : true
 	});
 
@@ -379,6 +379,37 @@ App.controller('MainCtrl', function ($scope, $timeout, $document, MorseDevice) {
 	$scope.sent = [];
 	$scope.buffer = '';
 	$scope.queue = '';
+
+	$scope.macros = [
+		{
+			"name" : "CQ",
+			"text" : "CQ CQ DE JH1UMV JH1UMV PSE K"
+		},
+		{
+			"name" : "EX",
+			"text" : "EX EX EX DE JH1UMV JH1UMV JH1UMV                                            VVVVVVVVV JH1UMV"
+		},
+		{
+			"name" : "QRL?",
+			"text" : "QRL?"
+		},
+		{
+			"name" : "QRZ?",
+			"text" : "QRZ?"
+		},
+		{
+			"name" : "BK UR",
+			"text" : "BK UR 599 5NN BK"
+		},
+		{
+			"name" : "DE",
+			"text" : "DE JH1UMV"
+		},
+		{
+			"name" : "73",
+			"text" : "73 TU E E"
+		}
+	];
 
 	device.addListener('connect', function () {
 	});
@@ -486,7 +517,7 @@ App.controller('MainCtrl', function ($scope, $timeout, $document, MorseDevice) {
 	});
 
 	$scope.send = function (string) {
-		device.send(string);
+		device.send(string + ' ');
 		$document.find('#input').focus();
 	};
 

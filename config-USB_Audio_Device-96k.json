@@ -15,6 +15,6 @@
 		"samplerate" : 96000
 	},
 	"server" : {
-		"listen" : ":51235"
+		"listen" : "localhost:51235"
 	}
 }

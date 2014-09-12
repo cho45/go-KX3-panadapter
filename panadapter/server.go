@@ -133,7 +133,7 @@ func ServWebSocket() error {
 	}
 	http.Handle("/", http.FileServer(http.Dir(dir)))
 
-	log.Printf("websocket server listen: %s", config.Server.Listen)
+	log.Printf("websocket server listen: http://%s/client.html", config.Server.Listen)
 	err = http.ListenAndServe(config.Server.Listen, nil)
 	if err != nil {
 		log.Printf("http.ListenAndServe failed with  %s", err)
