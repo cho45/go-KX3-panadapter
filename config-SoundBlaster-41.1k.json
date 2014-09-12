@@ -15,6 +15,6 @@
 		"samplerate" : 48000
 	},
 	"server" : {
-		"listen" : ":51234"
+		"listen" : ":51235"
 	}
 }

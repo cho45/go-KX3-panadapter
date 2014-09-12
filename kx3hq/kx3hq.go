@@ -226,13 +226,16 @@ func (s *KX3Controller) StartTextBufferObserver() {
 				s.pubsub.Pub(&EventTextDecoded{Text: ret[3]})
 			}
 
-			sent := s.DeviceBuffer[:len(s.DeviceBuffer)-int(bufferedCount)]
-			s.DeviceBuffer = s.DeviceBuffer[len(s.DeviceBuffer)-int(bufferedCount):]
-			for _, char := range sent {
-				s.pubsub.Pub(&EventTextSent{
-					Text:        string(char),
-					BufferCount: int(bufferedCount),
-				})
+			diff := len(s.DeviceBuffer)-int(bufferedCount)
+			if diff > 0 {
+				sent := s.DeviceBuffer[:diff]
+				s.DeviceBuffer = s.DeviceBuffer[diff:]
+				for _, char := range sent {
+					s.pubsub.Pub(&EventTextSent{
+						Text:        string(char),
+						BufferCount: int(bufferedCount),
+					})
+				}
 			}
 
 			// fill device text buffer

@@ -8,13 +8,13 @@
 		"height" : 600
 	},
 	"historySize" : 1000,
-	"fftSize" : 4096,
+	"fftSize" : 8192,
 	"input" : {
 		"name" : "Steinberg UR22",
 		"dynamicRange" : 40,
-		"samplerate" : 96000
+		"samplerate" : 176400 
 	},
 	"server" : {
-		"listen" : ":51235"
+		"listen" : ":51234"
 	}
 }

@@ -10,7 +10,7 @@
 	"historySize" : 1000,
 	"fftSize" : 4096,
 	"input" : {
-		"name" : "Steinberg UR22",
+		"name" : "USB Audio Device",
 		"dynamicRange" : 40,
 		"samplerate" : 96000
 	},
