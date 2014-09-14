@@ -10,7 +10,6 @@
 		<script type="text/javascript" src="assets/jquery-2.1.1.js"></script>
 		<link rel="stylesheet" href="assets/bootstrap/css/bootstrap.css">
 		<link rel="stylesheet" href="assets/bootstrap/css/bootstrap-theme.css">
-		<script src="assets/bootstrap/js/bootstrap.js"></script>
 		<script src="assets/angular.js"></script>
 		<script src="assets/underscore.js"></script>
 		<script src="assets/keyString.js"></script>
@@ -37,7 +36,7 @@
 							</div>
 						</div>
 					</div>
-					<div class="form-group form-group-sm">
+					<!-- div class="form-group form-group-sm">
 						<label class="col-sm-4 control-label">Inhibit</label>
 						<div class="col-sm-8">
 							<div class="input-group">
@@ -45,7 +44,7 @@
 								<div class="input-group-addon">msec</div>
 							</div>
 						</div>
-					</div>
+					</div -->
 					<div class="form-group form-group-sm">
 						<label class="col-sm-4 control-label">Side tone</label>
 						<div class="col-sm-8">
@@ -83,7 +82,10 @@
 							</style>
 						</div>
 						<div class="col-sm-12">
-							<input type="text" class="form-control" placeholder="input" id="input"/>
+							<div class="input-group">
+								<input type="text" class="form-control" placeholder="input" id="input"/>
+								<div class="input-group-addon">{{ connected ? 'Connected' : 'Disconnected' }}</div>
+							</div>
 						</div>
 						<div class="col-sm-12" style="margin: 10px 0">
 							<div ng-repeat="macro in macros" class="btn-group dropdown" style="margin-right: 5px">
@@ -98,11 +100,36 @@
 									<li><a ng-click="edit(macro)">Edit…</a></li>
 								</ul>
 							</div>
+							<button class="btn btn-success" ng-click="edit()">+</button>
 						</div>
 					</div>
 				</div>
 
 			</form>
+			<script type="text/ng-template" id="edit.html">
+				<div class="modal-header">
+					<h3 class="modal-title">Edit</h3>
+				</div>
+				<div class="modal-body">
+					<div class="form-group">
+						<label>
+							Name
+						</label>
+						<input type="text" class="form-control" ng-model="macro.name"/>
+					</div>
+					<div class="form-group">
+						<label>
+							Text
+						</label>
+						<input type="text" class="form-control" ng-model="macro.text"/>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button class="btn btn-danger" ng-click="remove()" ng-show="mode == 'edit'">Remove</button>
+					<button class="btn btn-primary" ng-click="ok()">OK</button>
+					<button class="btn btn-default" ng-click="cancel()">Cancel</button>
+				</div>
+			</script>
 		</div>
 	</body>
 </html>

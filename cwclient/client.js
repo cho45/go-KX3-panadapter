@@ -1,5 +1,5 @@
 
-var App = angular.module('App', []);
+var App = angular.module('App', ['ui.bootstrap']);
 
 App.factory('MorseDevice', function ($q) {
 	var MORSE_CODES = [
@@ -365,7 +365,7 @@ App.factory('MorseDevice', function ($q) {
 	return MorseDevice;
 });
 
-App.controller('MainCtrl', function ($scope, $timeout, $document, MorseDevice) {
+App.controller('MainCtrl', function ($scope, $timeout, $document, $modal, MorseDevice) {
 	var device = new MorseDevice({
 		server : "ws://" + location.host + "/cw",
 		autoReconnect : true
@@ -383,7 +383,7 @@ App.controller('MainCtrl', function ($scope, $timeout, $document, MorseDevice) {
 	$scope.macros = [
 		{
 			"name" : "CQ",
-			"text" : "CQ CQ DE JH1UMV JH1UMV PSE K"
+			"text" : "CQ CQ DE JH1UMV JH1UMV JCC110305 PSE K"
 		},
 		{
 			"name" : "EX",
@@ -410,6 +410,12 @@ App.controller('MainCtrl', function ($scope, $timeout, $document, MorseDevice) {
 			"text" : "73 TU E E"
 		}
 	];
+
+	try {
+		$scope.macros = JSON.parse(localStorage.macros);
+	} catch (e) {
+		console.log('Failed to parse JSON: ' + e);
+	}
 
 	device.addListener('connect', function () {
 	});
@@ -521,17 +527,68 @@ App.controller('MainCtrl', function ($scope, $timeout, $document, MorseDevice) {
 		$document.find('#input').focus();
 	};
 
+	$scope.edit = function (macro) {
+		var modal = $modal.open({
+			templateUrl: "edit.html",
+			controller : function ($scope, $modalInstance, macro) {
+				$scope.mode  = macro ? 'edit' : 'add';
+				$scope.macro = $scope.mode === 'edit' ? angular.copy(macro) : {};
+
+				$scope.ok = function () {
+					$modalInstance.close($scope.macro);
+				};
+
+				$scope.cancel = function () {
+					$modalInstance.dismiss('cancel');
+				};
+
+				$scope.remove = function () {
+					if (confirm("Sure?")) {
+						$modalInstance.close('remove');
+					}
+				};
+			},
+			resolve : {
+				macro : function () {
+					return macro;
+				}
+			}
+		});
+
+		modal.result.then(function (m) {
+			if (m != 'remove') {
+				console.log(m);
+				if (macro) {
+					macro.name = m.name;
+					macro.text = m.text;
+				} else {
+					$scope.macros.push(m);
+				}
+			} else {
+				for (var i = 0, len = $scope.macros.length; i < len; i++) {
+					if ($scope.macros[i] === macro) {
+						$scope.macros.splice(i, 1);
+						break;
+					}
+				}
+			}
+
+			localStorage.macros = JSON.stringify($scope.macros);
+		});
+	};
+
 	var input = $document.find('#input');
 	input.keydown(function (e) {
 		var key = keyString(e.originalEvent);
 		console.log(key);
 
+		if (key === 'bf') key = '/';
 		if (key === 'bb') key = '+';
 		if (key === 'S-bb') key = '=';
 		if (key === 'S-bf') key = '?';
 		if (key === 'S-BS') key = '\x7f';
 
-		if (/^[a-z0-9=+\-\?\x7f]$/i.test(key)) {
+		if (/^[a-z0-9=+\-\?\/\x7f]$/i.test(key)) {
 			device.send(key);
 		} else
 		if ('SPC' === key) {
