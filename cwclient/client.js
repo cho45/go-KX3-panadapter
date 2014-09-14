@@ -599,6 +599,12 @@ App.controller('MainCtrl', function ($scope, $timeout, $document, $modal, MorseD
 		} else
 		if ('BS' === key) {
 			device.back();
+		} else
+		if ('C-RET' === key) { // BT
+			device.send('=');
+		} else
+		if ('S-C-RET' === key) { // AR
+			device.send('+');
 		}
 
 		return false;
