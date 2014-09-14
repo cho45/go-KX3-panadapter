@@ -412,7 +412,7 @@ App.controller('MainCtrl', function ($scope, $timeout, $document, $modal, MorseD
 	];
 
 	try {
-		$scope.macros = JSON.parse(localStorage.macros);
+		$scope.macros = angular.copy(JSON.parse(localStorage.macros));
 	} catch (e) {
 		console.log('Failed to parse JSON: ' + e);
 	}
@@ -535,7 +535,7 @@ App.controller('MainCtrl', function ($scope, $timeout, $document, $modal, MorseD
 				$scope.macro = $scope.mode === 'edit' ? angular.copy(macro) : {};
 
 				$scope.ok = function () {
-					$modalInstance.close($scope.macro);
+					$modalInstance.close(angular.copy($scope.macro));
 				};
 
 				$scope.cancel = function () {
@@ -573,7 +573,7 @@ App.controller('MainCtrl', function ($scope, $timeout, $document, $modal, MorseD
 				}
 			}
 
-			localStorage.macros = JSON.stringify($scope.macros);
+			localStorage.macros = JSON.stringify(angular.copy($scope.macros));
 		});
 	};
 
