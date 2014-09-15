@@ -421,6 +421,7 @@ App.controller('MainCtrl', function ($scope, $timeout, $document, $modal, MorseD
 	});
 
 	device.addListener('opened', function () {
+		console.log('opened!!!');
 		device.getSpeed(function (speed) {
 			console.log('getSpeed', speed);
 			$scope.$evalAsync(function () {
@@ -457,7 +458,7 @@ App.controller('MainCtrl', function ($scope, $timeout, $document, $modal, MorseD
 		});
 	});
 
-	device.addListener('disconnect', function () {
+	device.addListener('disconnected', function () {
 		$scope.$evalAsync(function () {
 			$scope.connected = false;
 		});

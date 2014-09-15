@@ -88,9 +88,9 @@
 							</div>
 						</div>
 						<div class="col-sm-12" style="margin: 10px 0">
-							<div ng-repeat="macro in macros" class="btn-group dropdown" style="margin-right: 5px">
-								<button type="button" class="btn btn-default" ng-click="send(macro.text)">{{ macro.name }}</button>
-								<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+							<div ng-repeat="macro in macros" class="btn-group dropdown" style="margin: 0 5px 5px 0">
+								<button class="btn btn-default btn-xs" ng-click="send(macro.text)">{{ macro.name }}</button>
+								<button class="btn btn-default btn-xs dropdown-toggle" data-toggle="dropdown">
 									<span class="caret"></span>
 									<span class="sr-only">Toggle Dropdown</span>
 								</button>
@@ -100,7 +100,7 @@
 									<li><a ng-click="edit(macro)">Edit…</a></li>
 								</ul>
 							</div>
-							<button class="btn btn-success" ng-click="edit()">+</button>
+							<button class="btn btn-success btn-xs" ng-click="edit()">+</button>
 						</div>
 					</div>
 				</div>

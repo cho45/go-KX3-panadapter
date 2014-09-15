@@ -54,8 +54,41 @@ func ServWebSocket() error {
 			websocket.JSON.Send(ws, event)
 		}
 
+		statusFunc := func(ev *kx3hq.EventStatusChange) {
+			switch (ev.Status) {
+			case kx3hq.STATUS_OPENED:
+				websocket.JSON.Send(ws, &JSONRPCEventResponse{
+					Result : &JSONRPCEventResponseResult{
+						Event: "opened",
+						Value: nil,
+					},
+				})
+			case kx3hq.STATUS_CLOSED:
+				websocket.JSON.Send(ws, &JSONRPCEventResponse{
+					Result : &JSONRPCEventResponseResult{
+						Event: "closed",
+						Value: nil,
+					},
+				})
+			}
+		}
+
 		kx3.On(subFunc)
 		defer kx3.Off(subFunc)
+
+		kx3.On(statusFunc)
+		defer kx3.Off(statusFunc)
+
+		ev := "opened"
+		if kx3.Status != kx3hq.STATUS_OPENED {
+			ev = "closed"
+		}
+		websocket.JSON.Send(ws, &JSONRPCEventResponse{
+			Result : &JSONRPCEventResponseResult{
+				Event: ev,
+				Value: nil,
+			},
+		})
 
 		var req JSONRPCRequest
 		for {
@@ -69,23 +102,24 @@ func ServWebSocket() error {
 			case "device_buffer":
 				res.Result = string(kx3.DeviceBuffer)
 			case "speed":
-				s, ok := req.Params[0].(float64)
-				if ok {
-					ret, err := kx3.Command(fmt.Sprintf("KS%03d;KS;", int(s)), kx3hq.RSP_KS)
-					fmt.Printf("SetSpeed: %v %v", ret, err)
-					if err == nil {
-						res.Result = ret[1]
-					} else {
-						res.Error = err.Error()
+				if len(req.Params) > 0 {
+					s, ok := req.Params[0].(float64)
+					if ok {
+						ret, err := kx3.Command(fmt.Sprintf("KS%03d;KS;", int(s)), kx3hq.RSP_KS)
+						fmt.Printf("SetSpeed: %v %v", ret, err)
+						if err != nil {
+							res.Error = err.Error()
+							continue
+						}
 					}
+				}
+
+				ret, err := kx3.Command(fmt.Sprintf("KS;"), kx3hq.RSP_KS)
+				fmt.Printf("GetSpeed: %v %v", ret, err)
+				if err == nil {
+					res.Result = ret[1]
 				} else {
-					ret, err := kx3.Command(fmt.Sprintf("KS;"), kx3hq.RSP_KS)
-					fmt.Printf("GetSpeed: %v %v", ret, err)
-					if err == nil {
-						res.Result = ret[1]
-					} else {
-						res.Error = err.Error()
-					}
+					res.Error = err.Error()
 				}
 			case "tone":
 				ret, err := kx3.Command(fmt.Sprintf("CW;"), kx3hq.RSP_CW)
