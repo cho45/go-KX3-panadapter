@@ -1,7 +1,7 @@
 
 var App = angular.module('App', ['ui.bootstrap']);
 
-App.factory('MorseDevice', function ($q) {
+App.factory('MorseDevice', function ($q, config) {
 	var MORSE_CODES = [
 		0, // 0 NUL
 		parseInt("111010111010111", 2), // 1 SOH => CT / KA
@@ -230,8 +230,8 @@ App.factory('MorseDevice', function ($q) {
 
 		exhaust : _.throttle(function () {
 			var self = this;
-			var MIN = 5;
-			var MAX = 9;
+			var MIN = config.queue.MIN;
+			var MAX = config.queue.MAX;
 
 			if (self._exhaust) return;
 			if (!self.queue.length) return;
@@ -365,12 +365,13 @@ App.factory('MorseDevice', function ($q) {
 	return MorseDevice;
 });
 
-App.controller('MainCtrl', function ($scope, $timeout, $document, $modal, MorseDevice) {
+App.controller('MainCtrl', function ($scope, $timeout, $document, $modal, config, MorseDevice) {
 	var device = new MorseDevice({
-		server : "ws://" + location.host + "/cw",
+		server : config.server,
 		autoReconnect : true
 	});
 
+	$scope.name = config.name;
 	$scope.connected = false;
 	$scope.speed = 20;
 	$scope.inhibit_time = 20;

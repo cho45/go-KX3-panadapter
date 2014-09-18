@@ -1,9 +1,9 @@
 <!--#!chrome-cli reload && echo 
 -->
 <!DOCTYPE html>
-<html ng-app="App">
+<html ng-app="App" ng-controller="MainCtrl">
 	<head>
-		<title></title>
+		<title>{{ name }}</title>
 		<meta charset="utf-8"/>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
 
@@ -15,6 +15,7 @@
 		<script src="assets/keyString.js"></script>
 		<script src="assets/ui-bootstrap-tpls-0.11.0.js"></script>
 		<script src="client.js"></script>
+		<script src="config.js"></script>
 
 		<link rev="made" href="mailto:cho45@lowreal.net"/>
 		<link rel="shortcut icon" href="/favicon.ico" type="image/x-icon"/>
@@ -23,7 +24,7 @@
 		<script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
 		<![endif]-->
 	</head>
-	<body ng-controller="MainCtrl">
+	<body>
 		<div class="container">
 			<form class="form-horizontal" style="padding: 10px">
 				<div style="float: right; width: 300px">
