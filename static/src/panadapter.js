@@ -6,9 +6,14 @@ Polymer({
 			value: 0
 		},
 
-		rigMode: {
+		rigModeRaw: {
 			type: String,
 			value: ""
+		},
+
+		rigMode: {
+			type: String,
+			computed: "_convertRigMode(rigModeRaw)"
 		}
 	},
 
@@ -158,8 +163,23 @@ Polymer({
 		};
 
 		self.$.historyContainer.onmousedown = function (e) {
-			console.log(getFrequency(e));
-			// self.shiftFFTHistory(getFrequency(e));
+			var freq = getFrequency(e);
+
+			var offset = {
+				CW_REV: -600,
+				CW: 600
+			}[self.rigMode];
+
+			if (offset) {
+				freq += offset;
+			}
+
+			console.log('change frequency to', freq, self.rigMode, 'offset', offset);
+			self.request('frequency', {
+				frequency: freq
+			}).then(function (result) {
+				console.log('change frequency result', result);
+			});
 		};
 
 		function getFrequency(e) {
@@ -167,7 +187,7 @@ Polymer({
 			var x = e.pageX - bcr.left, y = e.pageY - bcr.top;
 			// normalize to -0.5 0.5
 			var pos = x / (bcr.right - bcr.left) - 0.5;
-			return self.config.input.samplerate * pos;
+			return (self.config.input.samplerate * pos) + self.rigFrequency;
 		}
 	},
 
@@ -193,7 +213,7 @@ Polymer({
 				console.log('init', result);
 				self.config = result.config;
 				self.rigFrequency = result.rigFrequency;
-				self.rigMode = result.rigMode;
+				self.rigModeRaw = result.rigMode;
 				self.initCanvas();
 			});
 		};
@@ -280,14 +300,14 @@ Polymer({
 			ctx.stroke();
 
 			// draw FFT result
-			ctx.beginPath();
-			ctx.strokeStyle = "#ffffff";
-			ctx.moveTo(0, height);
-			for (var i = 0, len = self.config.fftSize; i < len; i++) {
-				var p = array[i] / 80;
-				ctx.lineTo(i, height - (p * height));
-			}
-			ctx.stroke();
+//			ctx.beginPath();
+//			ctx.strokeStyle = "#ffffff";
+//			ctx.moveTo(0, height);
+//			for (var i = 0, len = self.config.fftSize; i < len; i++) {
+//				var p = array[i] / 80;
+//				ctx.lineTo(i, height - (p * height));
+//			}
+//			ctx.stroke();
 		});
 	},
 
@@ -456,6 +476,19 @@ Polymer({
 		gl.activeTexture(gl.TEXTURE0);
 		gl.bindTexture(gl.TEXTURE_2D, self.textures[0]);
 		gl.uniform1i(gl.getUniformLocation(self.shaderProgram, "uTexture0"), 0);
+	},
+
+	_convertRigMode : function (raw) {
+		return ({
+			"1" : "LSB",
+			"2" : "USB",
+			"3" : "CW",
+			"4" : "FM",
+			"5" : "AM",
+			"6" : "DATA",
+			"7" : "CW_REV",
+			"8" : "DATA_REV"
+		})[raw];
 	}
 });
 

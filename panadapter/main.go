@@ -127,6 +127,8 @@ func (self *Server) startHttp() error {
 					"rigFrequency": self.rigFrequency,
 					"rigMode":      self.rigMode,
 				}
+			case "frequency":
+				self.handleFrequency(req, res, session)
 			case "echo":
 				self.handleEcho(req, res, session)
 			default:
@@ -208,6 +210,16 @@ func (self *Server) broadcastNotification(event *JSONRPCEventResponse) {
 
 func (self *Server) handleEcho(req *JSONRPCRequest, res *JSONRPCResponse, session *ServerSession) {
 	res.Result = req.Params
+}
+
+func (self *Server) handleFrequency(req *JSONRPCRequest, res *JSONRPCResponse, session *ServerSession) {
+	freq := req.Params["frequency"].(float64)
+	ret, err := self.kx3.Command(fmt.Sprintf("FA%011d;FA;", int(freq)), kx3hq.RSP_FA)
+	res.Result = map[string]interface{}{
+		"ret": ret,
+		"err": err,
+	}
+	fmt.Printf("change: %s, %s", ret, err)
 }
 
 func (self *Server) openAudioStream(in []int32) (*portaudio.Stream, error) {
