@@ -45,7 +45,7 @@ type Server struct {
 
 	running   bool
 	kx3       *kx3hq.KX3Controller
-	fftResult chan []float64
+	fftResult chan []float32
 	sessions  []*ServerSession
 
 	rigMode      string
@@ -61,7 +61,7 @@ type ServerSession struct {
 
 func (self *Server) Init() {
 	self.running = true
-	self.fftResult = make(chan []float64, 1)
+	self.fftResult = make(chan []float32, 1)
 	self.sessions = make([]*ServerSession, 0)
 }
 
@@ -74,17 +74,6 @@ func (self *Server) Start() error {
 	if err = self.startAudio(); err != nil {
 		return err
 	}
-
-	//	go func() {
-	//		result := make([]float64, 1024)
-	//		for {
-	//			for i, _ := range result {
-	//				result[i] = float64(i) * 0.01
-	//			}
-	//			self.fftResult <- result
-	//			time.Sleep(1 * time.Second)
-	//		}
-	//	}()
 
 	if err = self.startSerial(); err != nil {
 		return err
@@ -152,7 +141,7 @@ func (self *Server) startHttp() error {
 		bufferLittle := new(bytes.Buffer)
 		bufferBig := new(bytes.Buffer)
 
-		getBytes := func(result []float64, byteOrder binary.ByteOrder) []byte {
+		getBytes := func(result []float32, byteOrder binary.ByteOrder) []byte {
 			var buffer *bytes.Buffer
 			if byteOrder == binary.BigEndian {
 				buffer = bufferBig
@@ -297,7 +286,7 @@ func (self *Server) startAudio() error {
 		phaseI := make([]float64, fftSize)
 		phaseQ := make([]float64, fftSize)
 		complexIQ := make([]complex128, fftSize)
-		fftResult := make([]float64, fftSize)
+		fftResult := make([]float32, fftSize)
 		fftCorrection := func(freq float64) float64 {
 			return math.Pow(2.0, freq/41000)
 		}
@@ -332,12 +321,12 @@ func (self *Server) startAudio() error {
 			// real
 			for i := 0; i < halfFftSize; i++ {
 				power := math.Sqrt(real(result[i])*real(result[i]) + imag(result[i])*imag(result[i]))
-				fftResult[i+halfFftSize] = 20 * math.Log10(power*fftCorrection(float64(i)*fftBinBandWidth))
+				fftResult[i+halfFftSize] = float32(20 * math.Log10(power*fftCorrection(float64(i)*fftBinBandWidth)))
 			}
 			// imag
 			for i := halfFftSize; i < fftSize; i++ {
 				power := math.Sqrt(real(result[i])*real(result[i]) + imag(result[i])*imag(result[i]))
-				fftResult[i-halfFftSize] = 20 * math.Log10(power*fftCorrection(float64(fftSize-i)*fftBinBandWidth))
+				fftResult[i-halfFftSize] = float32(20 * math.Log10(power*fftCorrection(float64(fftSize-i)*fftBinBandWidth)))
 			}
 
 			self.fftResult <- fftResult

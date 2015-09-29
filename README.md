@@ -47,8 +47,6 @@ Most code is written in golang. I don't build binary because this project is sti
 
 ```
 brew install portaudio
-brew install glew
-brew install glfw2
 ```
 
 ```

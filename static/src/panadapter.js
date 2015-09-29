@@ -51,7 +51,7 @@ Polymer({
 
 		self.$.historyCanvas.width  = self.config.fftSize;
 		self.$.historyCanvas.height = self.historySize;
-		self.$.fftCanvas.width = self.config.fftSize;
+		self.$.fftCanvas.width = self.$.fftCanvas.parentNode.offsetWidth;
 		self.$.fftCanvas.height = 100;
 
 		self.bindEvents();
@@ -245,7 +245,7 @@ Polymer({
 					}
 				}
 			} else {
-				var array = new Float64Array(e.data);
+				var array = new Float32Array(e.data);
 				self.renderFFT(array);
 				self.renderHistory(array);
 			}
@@ -282,21 +282,23 @@ Polymer({
 
 	renderFFT : function (array) {
 		var self = this;
+		var width = self.$.fftCanvas.width;
+		var height = self.$.fftCanvas.height;
+
+		var min = Math.ceil(array.length / width);
+
+		var ctx = self.$.fftCanvas.getContext('2d');
+		ctx.fillStyle = "#000000";
+		ctx.lineWidth = 1;
+
 		cancelAnimationFrame(self._requestedFFT);
 		self._requestedFFT = requestAnimationFrame(function () {
-			var ctx = self.$.fftCanvas.getContext('2d');
 
-			var width = self.$.fftCanvas.width;
-			var height = self.$.fftCanvas.height;
-
-			ctx.fillStyle = "#000000";
 			ctx.fillRect(0, 0, width, height);
-
-			ctx.lineWidth = 1;
 
 			// draw grid
 			ctx.beginPath();
-			ctx.strokeStyle = "#cccccc";
+			ctx.strokeStyle = "#666666";
 			ctx.moveTo(width / 2, 0);
 			ctx.lineTo(width / 2, height);
 			ctx.stroke();
@@ -305,9 +307,12 @@ Polymer({
 			ctx.beginPath();
 			ctx.strokeStyle = "#ffffff";
 			ctx.moveTo(0, height);
-			for (var i = 0, len = self.config.fftSize; i < len; i++) {
-				var p = array[i] / 80;
-				ctx.lineTo(Math.floor(i), Math.floor(height - (p * height)));
+			for (var i = 0, len = width; i < len; i += 2) {
+				var n = ~~(i / width * array.length);
+				var v = array[n];
+				// var v = array.subarray(n, n + min).reduce(function (i, r) { return i + r }) / min;
+				var p = v / 80;
+				ctx.lineTo(~~(i), ~~(height - (p * height)));
 			}
 			ctx.stroke();
 		});
