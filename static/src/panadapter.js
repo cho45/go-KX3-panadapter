@@ -252,9 +252,9 @@ Polymer({
 	processNotification : function (result) {
 		var self = this;
 		if (result.type === 'frequencyChanged') {
-			var diff = self.rigFrequency - result.rigFrequency;
-			self.set('rigFrequency', result.rigFrequency);
-			self.shiftFFTHistory(diff);
+			var diff = self.rigFrequency - result.data.rigFrequency;
+			self.set('rigFrequency', result.data.rigFrequency);
+			self.shiftFFTHistory(-diff);
 		} else {
 			console.log('unexpected notification', result);
 		}
@@ -269,10 +269,19 @@ Polymer({
 			var width = self.$.fftCanvas.width;
 			var height = self.$.fftCanvas.height;
 
-			ctx.beginPath();
 			ctx.fillStyle = "#000000";
-			ctx.strokeStyle = "#ffffff";
 			ctx.fillRect(0, 0, width, height);
+
+			// draw grid
+			ctx.beginPath();
+			ctx.strokeStyle = "#cccccc";
+			ctx.moveTo(width / 2, 0);
+			ctx.lineTo(width / 2, height);
+			ctx.stroke();
+
+			// draw FFT result
+			ctx.beginPath();
+			ctx.strokeStyle = "#ffffff";
 			ctx.moveTo(0, height);
 			for (var i = 0, len = self.config.fftSize; i < len; i++) {
 				var p = array[i] / 80;
