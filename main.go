@@ -5,11 +5,11 @@ package main
 import (
 	"flag"
 	"fmt"
-	"runtime"
-	"runtime/pprof"
 	"github.com/cho45/go-KX3-panadapter/panadapter"
 	"log"
 	"os"
+	"runtime"
+	"runtime/pprof"
 )
 
 func main() {
@@ -39,5 +39,11 @@ func main() {
 		os.Exit(255)
 	}
 
-	panadapter.Start(config)
+	server := &panadapter.Server{Config: config}
+	server.Init()
+	err = server.Start()
+	if err != nil {
+		fmt.Printf("Error", err)
+		os.Exit(255)
+	}
 }

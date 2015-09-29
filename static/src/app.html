@@ -1,0 +1,31 @@
+<link rel="import" href="../bower_components/polymer/polymer.html">
+
+<link rel="import" href="./panadapter.html">
+
+<dom-module id="my-app">
+	<style is="custom-style">
+		:host {
+			-moz-user-select: none;
+			-webkit-user-select: none;
+			-ms-user-select: none;
+			cursor: default;
+			display: block;
+			margin: 0;
+			width: 100%;
+			height: 100%;
+			background: #fff;
+		}
+	</style>
+
+	<template>
+		<my-panadapter></my-panadapter>
+	</template>
+</dom-module>
+
+<script>
+	Polymer({
+		is: 'my-app',
+		properties: {
+		}
+	});
+</script>

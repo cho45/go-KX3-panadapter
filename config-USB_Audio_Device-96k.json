@@ -11,7 +11,7 @@
 	"fftSize" : 4096,
 	"input" : {
 		"name" : "USB Audio Device",
-		"dynamicRange" : 40,
+		"dynamicRange" : 80,
 		"samplerate" : 96000
 	},
 	"server" : {

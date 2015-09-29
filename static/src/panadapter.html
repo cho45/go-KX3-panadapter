@@ -1,0 +1,89 @@
+<link rel="import" href="../bower_components/polymer/polymer.html">
+
+<dom-module id="my-panadapter">
+	<style is="custom-style">
+		:host {
+			@apply(--paper-font-common-base);
+			-moz-user-select: none;
+			-webkit-user-select: none;
+			-ms-user-select: none;
+			cursor: default;
+			display: block;
+			position: relative;
+			margin: 0;
+			height: 100%;
+			width: 100%;
+		}
+
+		#container {
+			height: 100%;
+			width: 100%;
+		}
+
+		#historyContainer {
+			position: relative;
+			width: 100%;
+			height: 75%;
+		}
+
+		#historyCanvas {
+			display: block;
+			width: 100%;
+			height: 100%;
+		}
+
+		#fftContainer {
+			width: 100%;
+			height: 25%;
+		}
+
+		#fftCanvas {
+			display: block;
+			width: 100%;
+			height: 100%;
+		}
+	</style>
+
+	<template>
+		<div id="container">
+			<div id="historyContainer">
+				<canvas id="historyCanvas"></canvas>
+
+				<script type="x-shader/x-vertex" id="vertex-shader">
+					attribute vec3 aVertexPosition;
+
+					void main(void) {
+						gl_Position = vec4(aVertexPosition, 1.0);
+					}
+				</script>
+
+				<script type="x-shader/x-fragment" id="fragment-shader">
+					uniform sampler2D uTexture0;
+					uniform sampler2D uTexture1;
+					uniform highp vec2 uViewCoords;
+					uniform highp float uOffsetY;
+
+					void main(void) {
+						highp vec4 screen = gl_FragCoord;
+						if (screen.y >= uOffsetY) {
+							screen.y = uViewCoords.y + uOffsetY - screen.y;
+							highp vec2 screenTexCoord = screen.xy / uViewCoords.xy;
+							gl_FragColor = texture2D(uTexture1, screenTexCoord);
+						} else {
+							screen.y = uViewCoords.y - screen.y + uOffsetY;
+							highp vec2 screenTexCoord = screen.xy / uViewCoords.xy;
+							gl_FragColor = texture2D(uTexture0, screenTexCoord);
+						}
+					}
+				</script>
+			</div>
+
+			<div id="fftContainer">
+				<canvas id="fftCanvas"></canvas>
+			</div>
+		</div>
+	</template>
+</dom-module>
+
+<script src="panadapter.js"></script>
+
