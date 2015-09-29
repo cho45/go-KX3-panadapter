@@ -292,6 +292,8 @@ Polymer({
 			ctx.fillStyle = "#000000";
 			ctx.fillRect(0, 0, width, height);
 
+			ctx.lineWidth = 1;
+
 			// draw grid
 			ctx.beginPath();
 			ctx.strokeStyle = "#cccccc";
@@ -300,14 +302,14 @@ Polymer({
 			ctx.stroke();
 
 			// draw FFT result
-//			ctx.beginPath();
-//			ctx.strokeStyle = "#ffffff";
-//			ctx.moveTo(0, height);
-//			for (var i = 0, len = self.config.fftSize; i < len; i++) {
-//				var p = array[i] / 80;
-//				ctx.lineTo(i, height - (p * height));
-//			}
-//			ctx.stroke();
+			ctx.beginPath();
+			ctx.strokeStyle = "#ffffff";
+			ctx.moveTo(0, height);
+			for (var i = 0, len = self.config.fftSize; i < len; i++) {
+				var p = array[i] / 80;
+				ctx.lineTo(Math.floor(i), Math.floor(height - (p * height)));
+			}
+			ctx.stroke();
 		});
 	},
 
