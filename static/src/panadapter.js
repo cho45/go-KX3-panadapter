@@ -49,10 +49,11 @@ Polymer({
 		self.historySize = 512; // must be power of 2
 		self._current = 0;
 
-		self.$.historyCanvas.width  = self.config.fftSize;
 		self.$.historyCanvas.height = self.historySize;
-		self.$.fftCanvas.width = self.$.fftCanvas.parentNode.offsetWidth;
 		self.$.fftCanvas.height = 100;
+
+		self.$.historyCanvas.width  = self.$.historyCanvas.parentNode.offsetWidth * (window.devicePixelRatio || 1);
+		self.$.fftCanvas.width = self.$.fftCanvas.parentNode.offsetWidth * (window.devicePixelRatio || 1);
 
 		self.bindEvents();
 
@@ -180,6 +181,16 @@ Polymer({
 			}).then(function (result) {
 				console.log('change frequency result', result);
 			});
+		};
+
+
+		window.onresize = function () {
+			self.debounce('onresize', function () {
+				console.log('resize');
+				self.$.historyCanvas.width  = self.$.historyCanvas.parentNode.offsetWidth * (window.devicePixelRatio || 1);
+				self.$.fftCanvas.width = self.$.fftCanvas.parentNode.offsetWidth * (window.devicePixelRatio || 1);
+				self.initWebGL();
+			}, 500);
 		};
 
 		function getFrequency(e) {
@@ -330,48 +341,47 @@ Polymer({
 			var r = 0, g = 0, b = 0;
 			var p = array[i] / 80;
 
-			switch (true) {
-				case p > 5.0/6.0:
-					// yellow -> red
-					p = (p - (5 / 6.0)) / (1 / 6.0);
-					r = 255;
-					g = 255 * p;
-					b = 255 * p;
-					break;
-				case p > 4.0/6.0:
-					// yellow -> red
-					p = (p - (4 / 6.0)) / (1 / 6.0);
-					r = 255;
-					g = 255 * (1 - p);
-					b = 0;
-					break;
-				case p > 3.0/6.0:
-					// green -> yellow
-					p = (p - (3 / 6.0)) / (1 / 6.0);
-					r = 255 * p;
-					g = 255;
-					b = 0;
-					break;
-				case p > 2.0/6.0:
-					// light blue -> green
-					p = (p - (2 / 6.0)) / (1 / 6.0);
-					r = 0;
-					g = 255;
-					b = 255 * (1 - p);
-					break;
-				case p > 1.0/6.0:
-					// blue -> light blue
-					p = (p - (1 / 6.0)) / (1 / 6.0);
-					r = 0;
-					g = 255 * p;
-					b = 255;
-					break;
-				case p > 0:
-					// black -> blue
-					p = p / (1 / 6.0);
-					r = 0;
-					g = 0;
-					b = 255 * p;
+			if (p > 5.0/6.0) {
+				// yellow -> red
+				p = (p - (5 / 6.0)) / (1 / 6.0);
+				r = 255;
+				g = 255 * p;
+				b = 255 * p;
+			} else
+			if (p > 4.0/6.0) {
+				// yellow -> red
+				p = (p - (4 / 6.0)) / (1 / 6.0);
+				r = 255;
+				g = 255 * (1 - p);
+				b = 0;
+			} else
+			if (p > 3.0/6.0) {
+				// green -> yellow
+				p = (p - (3 / 6.0)) / (1 / 6.0);
+				r = 255 * p;
+				g = 255;
+				b = 0;
+			} else
+			if (p > 2.0/6.0) {
+				// light blue -> green
+				p = (p - (2 / 6.0)) / (1 / 6.0);
+				r = 0;
+				g = 255;
+				b = 255 * (1 - p);
+			} else
+			if (p > 1.0/6.0) {
+				// blue -> light blue
+				p = (p - (1 / 6.0)) / (1 / 6.0);
+				r = 0;
+				g = 255 * p;
+				b = 255;
+			} else
+			if (p > 0) {
+				// black -> blue
+				p = p / (1 / 6.0);
+				r = 0;
+				g = 0;
+				b = 255 * p;
 			}
 
 			data[n + 0] = r;
