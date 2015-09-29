@@ -7,7 +7,8 @@ import (
 	"log"
 	"math"
 	"net/http"
-	//	"time"
+	"strconv"
+	"time"
 
 	"github.com/andrebq/gas"
 	"github.com/cho45/go-KX3-panadapter/kx3hq"
@@ -30,8 +31,13 @@ type JSONRPCResponse struct {
 }
 
 type JSONRPCEventResponse struct {
-	Result interface{} `json:"result"`
-	Error  interface{} `json:"error"`
+	Result *JSONRPCEventResponseResult `json:"result"`
+	Error  interface{}                 `json:"error"`
+}
+
+type JSONRPCEventResponseResult struct {
+	Type string                 `json:"type"`
+	Data map[string]interface{} `json:"data"`
 }
 
 type Server struct {
@@ -41,6 +47,9 @@ type Server struct {
 	kx3       *kx3hq.KX3Controller
 	fftResult chan []float64
 	sessions  []*ServerSession
+
+	rigMode      string
+	rigFrequency float64
 }
 
 type ServerSession struct {
@@ -77,6 +86,10 @@ func (self *Server) Start() error {
 	//		}
 	//	}()
 
+	if err = self.startSerial(); err != nil {
+		return err
+	}
+
 	if err = self.startHttp(); err != nil {
 		return err
 	}
@@ -110,7 +123,9 @@ func (self *Server) startHttp() error {
 				session.initialized = true
 
 				res.Result = map[string]interface{}{
-					"config": self.Config,
+					"config":       self.Config,
+					"rigFrequency": self.rigFrequency,
+					"rigMode":      self.rigMode,
 				}
 			case "echo":
 				self.handleEcho(req, res, session)
@@ -180,6 +195,15 @@ func (self *Server) startHttp() error {
 	log.Printf("websocket server listen: %d", self.Config.Server.Listen)
 	err = http.ListenAndServe(self.Config.Server.Listen, nil)
 	return err
+}
+
+func (self *Server) broadcastNotification(event *JSONRPCEventResponse) {
+	for _, session := range self.sessions {
+		if !session.initialized {
+			continue
+		}
+		websocket.JSON.Send(session.ws, event)
+	}
 }
 
 func (self *Server) handleEcho(req *JSONRPCRequest, res *JSONRPCResponse, session *ServerSession) {
@@ -307,5 +331,62 @@ func (self *Server) startAudio() error {
 			self.fftResult <- fftResult
 		}
 	}()
+	return nil
+}
+
+func (self *Server) startSerial() error {
+	connect := func() {
+		self.kx3 = kx3hq.New()
+		if err := self.kx3.Open(self.Config.Port.Name, self.Config.Port.Baudrate); err != nil {
+			log.Printf("Error on Open: %s", err)
+			return
+		}
+		log.Printf("Connected")
+		self.kx3.StartTextBufferObserver()
+		defer self.kx3.Close()
+		var err error
+		var freq float64
+		var matched []string
+		for self.running {
+			matched, err = self.kx3.Command("MD;", kx3hq.RSP_MD)
+			if err != nil {
+				// timeout when KX3 does not respond (eg. changing band)
+				log.Printf("Error on command: %s", err)
+				time.Sleep(1000 * time.Millisecond)
+				continue
+			}
+			self.rigMode = matched[1]
+
+			matched, err = self.kx3.Command("FA;", kx3hq.RSP_FA)
+			if err != nil {
+				log.Printf("Error on command: %s", err)
+				time.Sleep(1000 * time.Millisecond)
+				continue
+			}
+			freq, err = strconv.ParseFloat(matched[1], 64)
+			if freq != self.rigFrequency {
+				self.rigFrequency = freq
+				self.broadcastNotification(&JSONRPCEventResponse{
+					Result: &JSONRPCEventResponseResult{
+						Type: "frequencyChanged",
+						Data: map[string]interface{}{
+							"rigFrequency": self.rigFrequency,
+						},
+					},
+				})
+			}
+
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+
+	go func() {
+		for self.running {
+			connect()
+			log.Printf("Sleep 3sec for retrying")
+			time.Sleep(3000 * time.Millisecond)
+		}
+	}()
+
 	return nil
 }

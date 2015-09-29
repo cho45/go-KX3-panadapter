@@ -1,6 +1,15 @@
 Polymer({
 	is: 'my-panadapter',
 	properties: {
+		rigFrequency: {
+			type: Number,
+			value: 0
+		},
+
+		rigMode: {
+			type: String,
+			value: ""
+		}
 	},
 
 	created: function () {
@@ -150,7 +159,7 @@ Polymer({
 
 		self.$.historyContainer.onmousedown = function (e) {
 			console.log(getFrequency(e));
-			self.shiftFFTHistory(getFrequency(e));
+			// self.shiftFFTHistory(getFrequency(e));
 		};
 
 		function getFrequency(e) {
@@ -181,8 +190,10 @@ Polymer({
 			self.request('init', {
 				byteOrder: self.BYTE_ORDER
 			}).then(function (result) {
+				console.log('init', result);
 				self.config = result.config;
-				console.log(self.config);
+				self.rigFrequency = result.rigFrequency;
+				self.rigMode = result.rigMode;
 				self.initCanvas();
 			});
 		};
@@ -195,7 +206,7 @@ Polymer({
 		self.ws.onmessage = function (e) {
 			if (typeof e.data === 'string') {
 				var res = JSON.parse(e.data);
-				if (res.id !== null) {
+				if (res.id) {
 					var callback = self._callbacks[res.id];
 					if (!callback) {
 						console.log('unknwon callback id:', res.id, self._callbacks);
@@ -239,7 +250,14 @@ Polymer({
 	},
 
 	processNotification : function (result) {
-		console.log('notification', result);
+		var self = this;
+		if (result.type === 'frequencyChanged') {
+			var diff = self.rigFrequency - result.rigFrequency;
+			self.set('rigFrequency', result.rigFrequency);
+			self.shiftFFTHistory(diff);
+		} else {
+			console.log('unexpected notification', result);
+		}
 	},
 
 	renderFFT : function (array) {
