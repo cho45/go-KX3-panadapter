@@ -90,8 +90,18 @@ Polymer({
 
 		gl.useProgram(self.shaderProgram);
 
-		self.vertexPositionAttribute = gl.getAttribLocation(self.shaderProgram, "aVertexPosition");
-		gl.enableVertexAttribArray(self.vertexPositionAttribute);
+		self.attributes = {
+			aVertexPosition : gl.getAttribLocation(self.shaderProgram, "aVertexPosition")
+		};
+
+		self.uniforms = {
+			uTexture0 : gl.getUniformLocation(self.shaderProgram, "uTexture0"),
+			uTexture1 : gl.getUniformLocation(self.shaderProgram, "uTexture1"),
+			uOffsetY : gl.getUniformLocation(self.shaderProgram, 'uOffsetY'),
+			uViewCoords: gl.getUniformLocation(self.shaderProgram, 'uViewCoords')
+		};
+
+		gl.enableVertexAttribArray(self.attributes.aVertexPosition);
 
 		self.vertices1 = gl.createBuffer();
 		gl.bindBuffer(gl.ARRAY_BUFFER, self.vertices1);
@@ -121,18 +131,18 @@ Polymer({
 
 		self.lineBuffer = new Uint8Array(self.fftSize * 4);
 
-		gl.uniform2f(gl.getUniformLocation(self.shaderProgram, 'uViewCoords'), self.$.historyCanvas.width, self.$.historyCanvas.height);
+		gl.uniform2f(self.uniforms.uViewCoords, self.$.historyCanvas.width, self.$.historyCanvas.height);
 
 		gl.bindBuffer(gl.ARRAY_BUFFER, self.vertices1);
 		gl.vertexAttribPointer(self.vertexPositionAttribute, 3, gl.FLOAT, false, 0, 0);
 
 		gl.activeTexture(gl.TEXTURE1);
 		gl.bindTexture(gl.TEXTURE_2D, self.textures[1]);
-		gl.uniform1i(gl.getUniformLocation(self.shaderProgram, "uTexture1"), 1);
+		gl.uniform1i(self.uniforms.uTexture1, 1);
 
 		gl.activeTexture(gl.TEXTURE0);
 		gl.bindTexture(gl.TEXTURE_2D, self.textures[0]);
-		gl.uniform1i(gl.getUniformLocation(self.shaderProgram, "uTexture0"), 0);
+		gl.uniform1i(self.uniforms.uTexture0, 0);
 
 		gl.bindTexture(gl.TEXTURE_2D, self.textures[0]);
 
@@ -295,18 +305,18 @@ Polymer({
 
 		gl.activeTexture(gl.TEXTURE1);
 		gl.bindTexture(gl.TEXTURE_2D, self.textures[1]);
-		gl.uniform1i(gl.getUniformLocation(self.shaderProgram, "uTexture1"), 1);
+		gl.uniform1i(self.uniforms.uTexture1, 1);
 
 		gl.activeTexture(gl.TEXTURE0);
 		gl.bindTexture(gl.TEXTURE_2D, self.textures[0]);
-		gl.uniform1i(gl.getUniformLocation(self.shaderProgram, "uTexture0"), 0);
+		gl.uniform1i(self.uniforms.uTexture0, 0);
 	},
 
 	_renderHistory : function () {
 		var self = this;
 		var gl = self.gl;
 
-		gl.uniform1f(gl.getUniformLocation(self.shaderProgram, 'uOffsetY'), self._current);
+		gl.uniform1f(self.uniforms.uOffsetY, self._current);
 
 		gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 	}
