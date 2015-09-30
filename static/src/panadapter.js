@@ -286,6 +286,9 @@ Polymer({
 			var diff = self.rigFrequency - result.data.rigFrequency;
 			self.set('rigFrequency', result.data.rigFrequency);
 			self.shiftFFTHistory(-diff);
+		} else
+		if (result.type === 'modeChanged') {
+			self.set('rigModeRaw', result.data.rigMode);
 		} else {
 			console.log('unexpected notification', result);
 		}

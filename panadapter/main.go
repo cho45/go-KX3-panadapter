@@ -356,7 +356,18 @@ func (self *Server) startSerial() error {
 				time.Sleep(1000 * time.Millisecond)
 				continue
 			}
-			self.rigMode = matched[1]
+			mode := matched[1]
+			if mode != self.rigMode {
+				self.rigMode = mode
+				self.broadcastNotification(&JSONRPCEventResponse{
+					Result: &JSONRPCEventResponseResult{
+						Type: "modeChanged",
+						Data: map[string]interface{}{
+							"rigMode": self.rigMode,
+						},
+					},
+				})
+			}
 
 			matched, err = self.kx3.Command("FA;", kx3hq.RSP_FA)
 			if err != nil {
