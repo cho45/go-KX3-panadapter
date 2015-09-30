@@ -107,7 +107,8 @@ Polymer({
 			console.log('onopen');
 
 			self.request('init', {
-				byteOrder: self.BYTE_ORDER
+				byteOrder: self.BYTE_ORDER,
+				rateLimit: 24
 			}).then(function (result) {
 				console.log('init', result);
 				self.config = result.config;
@@ -122,6 +123,7 @@ Polymer({
 		self.ws.onerror = function (e) {
 			console.log('onerror', e);
 		};
+
 		self.ws.onmessage = function (e) {
 			if (typeof e.data === 'string') {
 				var res = JSON.parse(e.data);
@@ -147,6 +149,7 @@ Polymer({
 				var array = new Float32Array(e.data);
 				self.$.fftCanvas.render(array);
 				self.$.fftHistory.render(array);
+				prevRenderedTime = new Date().getTime();
 			}
 		};
 	},

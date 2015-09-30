@@ -61,6 +61,8 @@ type ServerSession struct {
 	ws *websocket.Conn
 
 	byteOrder   binary.ByteOrder
+	rateLimit   int64
+	lastTime    int64
 	initialized bool
 }
 
@@ -95,7 +97,10 @@ func (self *Server) startHttp() error {
 	http.Handle("/stream", websocket.Handler(func(ws *websocket.Conn) {
 		log.Printf("New websocket: %v", ws)
 
-		session := &ServerSession{ws: ws}
+		session := &ServerSession{
+			ws:        ws,
+			rateLimit: 0,
+		}
 
 		self.sessions = append(self.sessions, session)
 		var req *JSONRPCRequest
@@ -114,6 +119,7 @@ func (self *Server) startHttp() error {
 				} else {
 					session.byteOrder = binary.LittleEndian
 				}
+				session.rateLimit = int64(req.Params["rateLimit"].(float64)) * 1e6
 				session.initialized = true
 
 				res.Result = map[string]interface{}{
@@ -185,7 +191,12 @@ func (self *Server) startHttp() error {
 				if !session.initialized {
 					continue
 				}
+				now := time.Now().UnixNano()
+				if now-session.lastTime < session.rateLimit {
+					continue
+				}
 				websocket.Message.Send(session.ws, getBytes(result, session.byteOrder))
+				session.lastTime = now
 			}
 		}
 	}()
@@ -393,6 +404,22 @@ func (self *Server) startAudio() error {
 				continue
 			}
 
+			waitingClient := 0
+			now := time.Now().UnixNano()
+			for _, session := range self.sessions {
+				if !session.initialized {
+					continue
+				}
+				if now-session.lastTime < session.rateLimit {
+					continue
+				}
+				waitingClient++
+			}
+
+			if waitingClient == 0 {
+				continue
+			}
+
 			for i := 0; i < len(in); i += 2 {
 				// left
 				phaseI[i/2] = float64(in[i]) / 0x1000000
@@ -435,21 +462,21 @@ func (self *Server) startSerial() error {
 				Result: &JSONRPCEventResponseResult{
 					Type: "sent",
 					Data: map[string]interface{}{
-						"char": ev.Text,
+						"char":   ev.Text,
 						"buffer": ev.BufferCount,
 					},
 				},
-			});
-		});
+			})
+		})
 
 		self.kx3.On(func(ev *kx3hq.EventStatusChange) {
 
 			var status string
-			switch (ev.Status) {
+			switch ev.Status {
 			case kx3hq.STATUS_OPENED:
-				status = "opened";
+				status = "opened"
 			case kx3hq.STATUS_CLOSED:
-				status = "closed";
+				status = "closed"
 			}
 
 			self.broadcastNotification(&JSONRPCEventResponse{
@@ -459,8 +486,8 @@ func (self *Server) startSerial() error {
 						"status": status,
 					},
 				},
-			});
-		});
+			})
+		})
 
 		if err := self.kx3.Open(self.Config.Port.Name, self.Config.Port.Baudrate); err != nil {
 			log.Printf("Error on Open: %s", err)
