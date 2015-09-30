@@ -112,13 +112,14 @@ Polymer({
 
 		for (var i = 0, it; (it = self.textures[i]); i++) {
 			gl.bindTexture(gl.TEXTURE_2D, it);
-			gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, true);
 			gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
 			gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, array);
 			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 			gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
 			gl.bindTexture(gl.TEXTURE_2D, null);
 		}
+
+		self.lineBuffer = new Uint8Array(self.fftSize * 4);
 
 		gl.uniform2f(gl.getUniformLocation(self.shaderProgram, 'uViewCoords'), self.$.historyCanvas.width, self.$.historyCanvas.height);
 
@@ -144,53 +145,52 @@ Polymer({
 
 		var gl = self.gl;
 
-		var data = new Uint8Array(self.fftSize * 4);
+		var data = self.lineBuffer;
 
 		for (var i = 0, len = self.fftSize; i < len; i++) {
 			var n = i * 4;
 			var r = 0, g = 0, b = 0;
 			var p = array[i] / 80;
 
-			if (p > 5.0/6.0) {
-				// yellow -> red
-				p = (p - (5 / 6.0)) / (1 / 6.0);
-				r = 255;
-				g = 255 * p;
+			if (p < 1.0/6.0) {
+				// black -> blue
+				p = p / (1 / 6.0);
+				r = 0;
+				g = 0;
 				b = 255 * p;
 			} else
-			if (p > 4.0/6.0) {
-				// yellow -> red
-				p = (p - (4 / 6.0)) / (1 / 6.0);
-				r = 255;
-				g = 255 * (1 - p);
-				b = 0;
-			} else
-			if (p > 3.0/6.0) {
-				// green -> yellow
-				p = (p - (3 / 6.0)) / (1 / 6.0);
-				r = 255 * p;
-				g = 255;
-				b = 0;
-			} else
-			if (p > 2.0/6.0) {
-				// light blue -> green
-				p = (p - (2 / 6.0)) / (1 / 6.0);
-				r = 0;
-				g = 255;
-				b = 255 * (1 - p);
-			} else
-			if (p > 1.0/6.0) {
+			if (p < 2.0/6.0) {
 				// blue -> light blue
 				p = (p - (1 / 6.0)) / (1 / 6.0);
 				r = 0;
 				g = 255 * p;
 				b = 255;
 			} else
-			if (p > 0) {
-				// black -> blue
-				p = p / (1 / 6.0);
+			if (p < 3.0/6.0) {
+				// light blue -> green
+				p = (p - (2 / 6.0)) / (1 / 6.0);
 				r = 0;
-				g = 0;
+				g = 255;
+				b = 255 * (1 - p);
+			} else
+			if (p < 4.0/6.0) {
+				// green -> yellow
+				p = (p - (3 / 6.0)) / (1 / 6.0);
+				r = 255 * p;
+				g = 255;
+				b = 0;
+			} else
+			if (p < 5.0/6.0) {
+				// yellow -> red
+				p = (p - (4 / 6.0)) / (1 / 6.0);
+				r = 255;
+				g = 255 * (1 - p);
+				b = 0;
+			} else {
+				// yellow -> red
+				p = (p - (5 / 6.0)) / (1 / 6.0);
+				r = 255;
+				g = 255 * p;
 				b = 255 * p;
 			}
 
