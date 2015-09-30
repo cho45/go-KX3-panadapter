@@ -35,18 +35,18 @@
 		<script type="x-shader/x-fragment" id="fragmentShader">
 			uniform sampler2D uTexture0;
 			uniform sampler2D uTexture1;
-			uniform highp vec2 uViewCoords;
-			uniform highp float uOffsetY;
+			uniform mediump vec2 uViewCoords;
+			uniform mediump float uOffsetY;
 
 			void main(void) {
-				highp vec4 screen = gl_FragCoord;
+				mediump vec4 screen = gl_FragCoord;
 				if (screen.y >= uOffsetY) {
 					screen.y = uViewCoords.y + uOffsetY - screen.y;
-					highp vec2 screenTexCoord = screen.xy / uViewCoords.xy;
+					mediump vec2 screenTexCoord = screen.xy / uViewCoords.xy;
 					gl_FragColor = texture2D(uTexture1, screenTexCoord);
 				} else {
 					screen.y = uViewCoords.y - screen.y + uOffsetY;
-					highp vec2 screenTexCoord = screen.xy / uViewCoords.xy;
+					mediump vec2 screenTexCoord = screen.xy / uViewCoords.xy;
 					gl_FragColor = texture2D(uTexture0, screenTexCoord);
 				}
 			}
