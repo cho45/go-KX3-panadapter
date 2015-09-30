@@ -105,7 +105,7 @@ Polymer({
 		gl.bindBuffer(gl.ARRAY_BUFFER, self.vertices1);
 		gl.vertexAttribPointer(self.vertexPositionAttribute, 2, gl.FLOAT, false, 0, 0);
 
-		gl.lineWidth(2);
+		gl.lineWidth(window.devicePixelRatio || 1);
 	},
 
 	render : function (array) {
