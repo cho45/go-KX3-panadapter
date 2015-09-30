@@ -161,53 +161,63 @@ Polymer({
 			var n = i * 4;
 			var r = 0, g = 0, b = 0;
 			var p = array[i] / 80;
-
-			if (p < 1.0/6.0) {
-				// black -> blue
-				p = p / (1 / 6.0);
-				r = 0;
-				g = 0;
-				b = 255 * p;
-			} else
-			if (p < 2.0/6.0) {
-				// blue -> light blue
-				p = (p - (1 / 6.0)) / (1 / 6.0);
-				r = 0;
-				g = 255 * p;
-				b = 255;
-			} else
-			if (p < 3.0/6.0) {
-				// light blue -> green
-				p = (p - (2 / 6.0)) / (1 / 6.0);
-				r = 0;
-				g = 255;
-				b = 255 * (1 - p);
-			} else
-			if (p < 4.0/6.0) {
-				// green -> yellow
-				p = (p - (3 / 6.0)) / (1 / 6.0);
-				r = 255 * p;
-				g = 255;
-				b = 0;
-			} else
-			if (p < 5.0/6.0) {
-				// yellow -> red
-				p = (p - (4 / 6.0)) / (1 / 6.0);
-				r = 255;
-				g = 255 * (1 - p);
-				b = 0;
-			} else {
-				// yellow -> red
-				p = (p - (5 / 6.0)) / (1 / 6.0);
-				r = 255;
-				g = 255 * p;
-				b = 255 * p;
+			if (p <= 0) {
+				data[n+0] = 0;
+				data[n+1] = 0;
+				data[n+2] = 0;
+				continue;
 			}
 
-			data[n + 0] = r;
-			data[n + 1] = g;
-			data[n + 2] = b;
-			data[n + 3] = 255;
+			var byte32 = ~~(0x10000 * p);
+			data[n+0] = byte32 & 0xff;
+			data[n+1] = (byte32>>8) & 0xff;
+
+//			if (p < 1.0/6.0) {
+//				// black -> blue
+//				p = p / (1 / 6.0);
+//				r = 0;
+//				g = 0;
+//				b = 255 * p;
+//			} else
+//			if (p < 2.0/6.0) {
+//				// blue -> light blue
+//				p = (p - (1 / 6.0)) / (1 / 6.0);
+//				r = 0;
+//				g = 255 * p;
+//				b = 255;
+//			} else
+//			if (p < 3.0/6.0) {
+//				// light blue -> green
+//				p = (p - (2 / 6.0)) / (1 / 6.0);
+//				r = 0;
+//				g = 255;
+//				b = 255 * (1 - p);
+//			} else
+//			if (p < 4.0/6.0) {
+//				// green -> yellow
+//				p = (p - (3 / 6.0)) / (1 / 6.0);
+//				r = 255 * p;
+//				g = 255;
+//				b = 0;
+//			} else
+//			if (p < 5.0/6.0) {
+//				// yellow -> red
+//				p = (p - (4 / 6.0)) / (1 / 6.0);
+//				r = 255;
+//				g = 255 * (1 - p);
+//				b = 0;
+//			} else {
+//				// yellow -> red
+//				p = (p - (5 / 6.0)) / (1 / 6.0);
+//				r = 255;
+//				g = 255 * p;
+//				b = 255 * p;
+//			}
+//
+//			data[n + 0] = r;
+//			data[n + 1] = g;
+//			data[n + 2] = b;
+//			data[n + 3] = 255;
 		}
 
 		var xoffset = 0, yoffset = self._current, width = self.fftSize, height = 1;

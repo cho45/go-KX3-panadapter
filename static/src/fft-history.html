@@ -40,14 +40,48 @@
 
 			void main(void) {
 				highp vec4 screen = gl_FragCoord;
+				mediump vec4 color;
 				if (screen.y >= uOffsetY) {
 					screen.y = uViewCoords.y + uOffsetY - screen.y;
 					highp vec2 screenTexCoord = screen.xy / uViewCoords.xy;
-					gl_FragColor = texture2D(uTexture1, screenTexCoord);
+					color = texture2D(uTexture1, screenTexCoord);
 				} else {
 					screen.y = uViewCoords.y - screen.y + uOffsetY;
 					highp vec2 screenTexCoord = screen.xy / uViewCoords.xy;
-					gl_FragColor = texture2D(uTexture0, screenTexCoord);
+					color = texture2D(uTexture0, screenTexCoord);
+				}
+
+				color = color * 255.0;
+				mediump float p = (color.x + color.y * 256.0) / 65535.0;
+
+				if (p < 1.0/6.0) {
+					// black -> blue
+					p = p / (1.0 / 6.0);
+					gl_FragColor = vec4(0.0, 0.0, p, 1.0);
+				} else
+				if (p < 2.0/6.0) {
+					// blue -> light blue
+					p = (p - (1.0 / 6.0)) / (1.0 / 6.0);
+					gl_FragColor = vec4(0.0, p, 1.0, 1.0);
+				} else
+				if (p < 3.0/6.0) {
+					// light blue -> green
+					p = (p - (2.0 / 6.0)) / (1.0 / 6.0);
+					gl_FragColor = vec4(0.0, 1.0, 1.0 - p, 1.0);
+				} else
+				if (p < 4.0/6.0) {
+					// green -> yellow
+					p = (p - (3.0 / 6.0)) / (1.0 / 6.0);
+					gl_FragColor = vec4(p, 1.0, 0.0, 1.0);
+				} else
+				if (p < 5.0/6.0) {
+					// yellow -> red
+					p = (p - (4.0 / 6.0)) / (1.0 / 6.0);
+					gl_FragColor = vec4(1.0, 1.0 - p, 0.0, 1.0);
+				} else {
+					// yellow -> red
+					p = (p - (5.0 / 6.0)) / (1.0 / 6.0);
+					gl_FragColor = vec4(1.0, p, p, 1.0);
 				}
 			}
 		</script>
