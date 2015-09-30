@@ -40,6 +40,11 @@ type JSONRPCEventResponseResult struct {
 	Data map[string]interface{} `json:"data"`
 }
 
+type SentEvent struct {
+	Char   string `json:"char"`
+	Buffer int    `json:"buffer"`
+}
+
 type Server struct {
 	Config *Config
 
@@ -118,6 +123,16 @@ func (self *Server) startHttp() error {
 				}
 			case "frequency":
 				self.handleFrequency(req, res, session)
+			case "deviceBuffer":
+				self.handleDeviceBuffer(req, res, session)
+			case "speed":
+				self.handleSpeed(req, res, session)
+			case "tone":
+				self.handleTone(req, res, session)
+			case "send":
+				self.handleSend(req, res, session)
+			case "stop":
+				self.handleStop(req, res, session)
 			case "echo":
 				self.handleEcho(req, res, session)
 			default:
@@ -197,6 +212,21 @@ func (self *Server) broadcastNotification(event *JSONRPCEventResponse) {
 	}
 }
 
+func (self *Server) handleInit(req *JSONRPCRequest, res *JSONRPCResponse, session *ServerSession) {
+	if req.Params["byteOrder"].(string) == "BIG_ENDIAN" {
+		session.byteOrder = binary.BigEndian
+	} else {
+		session.byteOrder = binary.LittleEndian
+	}
+	session.initialized = true
+
+	res.Result = map[string]interface{}{
+		"config":       self.Config,
+		"rigFrequency": self.rigFrequency,
+		"rigMode":      self.rigMode,
+	}
+}
+
 func (self *Server) handleEcho(req *JSONRPCRequest, res *JSONRPCResponse, session *ServerSession) {
 	res.Result = req.Params
 }
@@ -209,6 +239,67 @@ func (self *Server) handleFrequency(req *JSONRPCRequest, res *JSONRPCResponse, s
 		"err": err,
 	}
 	fmt.Printf("change: %s, %s", ret, err)
+}
+
+func (self *Server) handleDeviceBuffer(req *JSONRPCRequest, res *JSONRPCResponse, session *ServerSession) {
+	res.Result = string(self.kx3.DeviceBuffer)
+}
+
+func (self *Server) handleSpeed(req *JSONRPCRequest, res *JSONRPCResponse, session *ServerSession) {
+	if req.Params["speed"] != nil {
+		s, ok := req.Params["speed"].(float64)
+		if ok {
+			ret, err := self.kx3.Command(fmt.Sprintf("KS%03d;KS;", int(s)), kx3hq.RSP_KS)
+			fmt.Printf("SetSpeed: %v %v", ret, err)
+			if err != nil {
+				res.Error = err.Error()
+				return
+			}
+		}
+	}
+
+	ret, err := self.kx3.Command(fmt.Sprintf("KS;"), kx3hq.RSP_KS)
+	fmt.Printf("GetSpeed: %v %v", ret, err)
+	if err == nil {
+		res.Result = ret[1]
+	} else {
+		res.Error = err.Error()
+	}
+}
+
+func (self *Server) handleTone(req *JSONRPCRequest, res *JSONRPCResponse, session *ServerSession) {
+	ret, err := self.kx3.Command(fmt.Sprintf("CW;"), kx3hq.RSP_CW)
+	fmt.Printf("GetTone: %v %v", ret, err)
+	if err == nil {
+		pitch, err := strconv.ParseUint(ret[1], 10, 32)
+		if err == nil {
+			res.Result = pitch * 10
+		} else {
+			res.Error = err.Error()
+		}
+	} else {
+		res.Error = err.Error()
+	}
+}
+
+func (self *Server) handleSend(req *JSONRPCRequest, res *JSONRPCResponse, session *ServerSession) {
+	s, ok := req.Params["text"].(string)
+	if ok {
+		self.kx3.SendText(s)
+	} else {
+		res.Error = "invalid request params"
+	}
+	res.Result = ok
+}
+
+func (self *Server) handleStop(req *JSONRPCRequest, res *JSONRPCResponse, session *ServerSession) {
+	err := self.kx3.StopTX()
+	if err != nil {
+		res.Error = err.Error()
+		res.Result = false
+	} else {
+		res.Result = true
+	}
 }
 
 func (self *Server) openAudioStream(in []int32) (*portaudio.Stream, error) {
@@ -338,6 +429,39 @@ func (self *Server) startAudio() error {
 func (self *Server) startSerial() error {
 	connect := func() {
 		self.kx3 = kx3hq.New()
+
+		self.kx3.On(func(ev *kx3hq.EventTextSent) {
+			self.broadcastNotification(&JSONRPCEventResponse{
+				Result: &JSONRPCEventResponseResult{
+					Type: "sent",
+					Data: map[string]interface{}{
+						"char": ev.Text,
+						"buffer": ev.BufferCount,
+					},
+				},
+			});
+		});
+
+		self.kx3.On(func(ev *kx3hq.EventStatusChange) {
+
+			var status string
+			switch (ev.Status) {
+			case kx3hq.STATUS_OPENED:
+				status = "opened";
+			case kx3hq.STATUS_CLOSED:
+				status = "closed";
+			}
+
+			self.broadcastNotification(&JSONRPCEventResponse{
+				Result: &JSONRPCEventResponseResult{
+					Type: "statusChanged",
+					Data: map[string]interface{}{
+						"status": status,
+					},
+				},
+			});
+		});
+
 		if err := self.kx3.Open(self.Config.Port.Name, self.Config.Port.Baudrate); err != nil {
 			log.Printf("Error on Open: %s", err)
 			return

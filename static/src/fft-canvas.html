@@ -1,0 +1,32 @@
+<link rel="import" href="../bower_components/polymer/polymer.html">
+
+<dom-module id="my-fft-canvas">
+	<style is="custom-style">
+		:host {
+			-moz-user-select: none;
+			-webkit-user-select: none;
+			-ms-user-select: none;
+			cursor: default;
+			display: block;
+			position: relative;
+			margin: 0;
+			height: 100%;
+			width: 100%;
+			background: #000;
+		}
+
+		#fftCanvas {
+			display: block;
+			width: 100%;
+			height: 100%;
+		}
+	</style>
+
+	<template>
+		<canvas id="fftCanvas"></canvas>
+	</template>
+</dom-module>
+
+<script src="fft-canvas.js"></script>
+
+

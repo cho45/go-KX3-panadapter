@@ -1,5 +1,7 @@
 <link rel="import" href="../bower_components/polymer/polymer.html">
 <link rel="import" href="../bower_components/paper-styles/paper-styles.html">
+<link rel="import" href="./fft-history.html">
+<link rel="import" href="./fft-canvas.html">
 
 <dom-module id="my-panadapter">
 	<style is="custom-style">
@@ -17,12 +19,12 @@
 		}
 
 		#container {
+			position: relative;
 			height: 100%;
 			width: 100%;
 		}
 
 		#historyContainer {
-			position: relative;
 			width: 100%;
 			height: 75%;
 		}
@@ -38,53 +40,20 @@
 			width: 100%;
 			height: 25%;
 		}
-
-		#fftCanvas {
-			display: block;
-			width: 100%;
-			height: 100%;
-		}
 	</style>
 
 	<template>
 		<div id="container">
 			<div id="historyContainer">
-				<canvas id="historyCanvas"></canvas>
-
-				<script type="x-shader/x-vertex" id="vertex-shader">
-					attribute vec3 aVertexPosition;
-
-					void main(void) {
-						gl_Position = vec4(aVertexPosition, 1.0);
-					}
-				</script>
-
-				<script type="x-shader/x-fragment" id="fragment-shader">
-					uniform sampler2D uTexture0;
-					uniform sampler2D uTexture1;
-					uniform highp vec2 uViewCoords;
-					uniform highp float uOffsetY;
-
-					void main(void) {
-						highp vec4 screen = gl_FragCoord;
-						if (screen.y >= uOffsetY) {
-							screen.y = uViewCoords.y + uOffsetY - screen.y;
-							highp vec2 screenTexCoord = screen.xy / uViewCoords.xy;
-							gl_FragColor = texture2D(uTexture1, screenTexCoord);
-						} else {
-							screen.y = uViewCoords.y - screen.y + uOffsetY;
-							highp vec2 screenTexCoord = screen.xy / uViewCoords.xy;
-							gl_FragColor = texture2D(uTexture0, screenTexCoord);
-						}
-					}
-				</script>
+				<my-fft-history id="fftHistory"></my-fft-history>
 			</div>
 
-			<div id="fftContainer" style="background: #000">
-				<canvas id="fftCanvas"></canvas>
-				<div style="position: absolute; font-weight: bold; color: #fff; font-size: 14px; bottom: 0; left: 50%; transform: translate(-50%, 0)">
-					<span>{{rigFrequency}}</span>Hz
-				</div>
+			<div id="fftContainer">
+				<my-fft-canvas id="fftCanvas"></my-fft-canvas>
+			</div>
+
+			<div style="position: absolute; font-weight: bold; color: #fff; font-size: 14px; bottom: 0; left: 50%; transform: translate(-50%, 0)">
+				<span>{{rigFrequency}}</span>Hz
 			</div>
 		</div>
 	</template>
