@@ -221,11 +221,11 @@ Polymer({
 
 			gl.activeTexture(gl.TEXTURE1);
 			gl.bindTexture(gl.TEXTURE_2D, self.textures[1]);
-			gl.uniform1i(gl.getUniformLocation(self.shaderProgram, "uTexture1"), 1);
+			gl.uniform1i(self.uniforms.uTexture1, 1);
 
 			gl.activeTexture(gl.TEXTURE0);
 			gl.bindTexture(gl.TEXTURE_2D, self.textures[0]);
-			gl.uniform1i(gl.getUniformLocation(self.shaderProgram, "uTexture0"), 0);
+			gl.uniform1i(self.uniforms.uTexture0, 0);
 
 		}
 
