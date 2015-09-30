@@ -434,60 +434,59 @@ Polymer({
 				gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, array);
 				gl.bindTexture(gl.TEXTURE_2D, null);
 			}
-			return;
-		}
+		} else {
 
-		var freqRes = self.config.input.samplerate / self.config.fftSize;
-		var shift = Math.round(freqDiff / freqRes);
+			var freqRes = self.config.input.samplerate / self.config.fftSize;
+			var shift = Math.round(freqDiff / freqRes);
 
-		for (var ti = 0, texture; (texture = self.textures[ti]); ti++) { // no warnings
-			// gl.activeTexture(i === 1 ? gl.TEXTURE1 : gl.TEXTURE0);
+			for (var ti = 0, texture; (texture = self.textures[ti]); ti++) { // no warnings
+				// gl.activeTexture(i === 1 ? gl.TEXTURE1 : gl.TEXTURE0);
 
-			var fb = gl.createFramebuffer();
-			gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
-			gl.framebufferTexture2D( gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
-			gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, array);
-			gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+				var fb = gl.createFramebuffer();
+				gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+				gl.framebufferTexture2D( gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+				gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, array);
+				gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-			if (shift < 0) {
-				// shift to left and fill black to right
-				for (var y = 0; y < height; y++) {
-					for (var i = width - 1; -shift < i; i--) {
-						array[(y * width + i) * 4 + 0] = array[(y * width + i + shift) * 4 + 0];
-						array[(y * width + i) * 4 + 1] = array[(y * width + i + shift) * 4 + 1];
-						array[(y * width + i) * 4 + 2] = array[(y * width + i + shift) * 4 + 2];
-						array[(y * width + i) * 4 + 3] = array[(y * width + i + shift) * 4 + 3];
+				if (shift < 0) {
+					// shift to left and fill black to right
+					for (var y = 0; y < height; y++) {
+						for (var i = width - 1; -shift < i; i--) {
+							array[(y * width + i) * 4 + 0] = array[(y * width + i + shift) * 4 + 0];
+							array[(y * width + i) * 4 + 1] = array[(y * width + i + shift) * 4 + 1];
+							array[(y * width + i) * 4 + 2] = array[(y * width + i + shift) * 4 + 2];
+							array[(y * width + i) * 4 + 3] = array[(y * width + i + shift) * 4 + 3];
+						}
+						for (var i = 0; i < -shift; i++) {
+							array[(y * width + i) * 4 + 0] = 0;
+							array[(y * width + i) * 4 + 1] = 0;
+							array[(y * width + i) * 4 + 2] = 0;
+							array[(y * width + i) * 4 + 3] = 255;
+						}
 					}
-					for (var i = 0; i < -shift; i++) {
-						array[(y * width + i) * 4 + 0] = 0;
-						array[(y * width + i) * 4 + 1] = 0;
-						array[(y * width + i) * 4 + 2] = 0;
-						array[(y * width + i) * 4 + 3] = 255;
+				} else {
+					// shift to right and fill black to left
+					for (var y = 0; y < height; y++) { // no warnings
+						for (var i = 0; i < width - shift; i++) {
+							array[(y * width + i) * 4 + 0] = array[(y * width + i + shift) * 4 + 0];
+							array[(y * width + i) * 4 + 1] = array[(y * width + i + shift) * 4 + 1];
+							array[(y * width + i) * 4 + 2] = array[(y * width + i + shift) * 4 + 2];
+							array[(y * width + i) * 4 + 3] = array[(y * width + i + shift) * 4 + 3];
+						}
+						for (var i = width - shift; i < width; i++) {
+							array[(y * width + i) * 4 + 0] = 0;
+							array[(y * width + i) * 4 + 1] = 0;
+							array[(y * width + i) * 4 + 2] = 0;
+							array[(y * width + i) * 4 + 3] = 255;
+						}
 					}
 				}
-			} else {
-				// shift to right and fill black to left
-				for (var y = 0; y < height; y++) { // no warnings
-					for (var i = 0; i < width - shift; i++) {
-						array[(y * width + i) * 4 + 0] = array[(y * width + i + shift) * 4 + 0];
-						array[(y * width + i) * 4 + 1] = array[(y * width + i + shift) * 4 + 1];
-						array[(y * width + i) * 4 + 2] = array[(y * width + i + shift) * 4 + 2];
-						array[(y * width + i) * 4 + 3] = array[(y * width + i + shift) * 4 + 3];
-					}
-					for (var i = width - shift; i < width; i++) {
-						array[(y * width + i) * 4 + 0] = 0;
-						array[(y * width + i) * 4 + 1] = 0;
-						array[(y * width + i) * 4 + 2] = 0;
-						array[(y * width + i) * 4 + 3] = 255;
-					}
-				}
+
+				gl.bindTexture(gl.TEXTURE_2D, texture);
+				gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, array);
+				gl.bindTexture(gl.TEXTURE_2D, null);
 			}
-
-			gl.bindTexture(gl.TEXTURE_2D, texture);
-			gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, array);
-			gl.bindTexture(gl.TEXTURE_2D, null);
 		}
-
 
 		gl.activeTexture(gl.TEXTURE1);
 		gl.bindTexture(gl.TEXTURE_2D, self.textures[1]);
