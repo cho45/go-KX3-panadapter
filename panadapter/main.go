@@ -183,7 +183,7 @@ func (self *Server) startHttp() error {
 	}
 	http.Handle("/", http.FileServer(http.Dir(dir)))
 
-	log.Printf("websocket server listen: %d", self.Config.Server.Listen)
+	log.Printf("Http/WebSocket is now on http://%s/", self.Config.Server.Listen)
 	err = http.ListenAndServe(self.Config.Server.Listen, nil)
 	return err
 }
@@ -342,7 +342,7 @@ func (self *Server) startSerial() error {
 			log.Printf("Error on Open: %s", err)
 			return
 		}
-		log.Printf("Connected")
+		log.Printf("KX3 Connected")
 		self.kx3.StartTextBufferObserver()
 		defer self.kx3.Close()
 		var err error

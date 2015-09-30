@@ -84,7 +84,7 @@ Polymer({
 		gl.clear(gl.COLOR_BUFFER_BIT);
 
 		var fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-		gl.shaderSource(fragmentShader, document.getElementById('fragment-shader').innerText);
+		gl.shaderSource(fragmentShader, document.getElementById('fragment-shader').textContent);
 		gl.compileShader(fragmentShader);
 		if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {  
 			alert("An error occurred compiling the shaders: " + gl.getShaderInfoLog(fragmentShader));  
@@ -92,7 +92,7 @@ Polymer({
 		}
 
 		var vertexShader = gl.createShader(gl.VERTEX_SHADER);
-		gl.shaderSource(vertexShader, document.getElementById('vertex-shader').innerText);
+		gl.shaderSource(vertexShader, document.getElementById('vertex-shader').textContent);
 		gl.compileShader(vertexShader);
 		if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {  
 			alert("An error occurred compiling the shaders: " + gl.getShaderInfoLog(vertexShader));  

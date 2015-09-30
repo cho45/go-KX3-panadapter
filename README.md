@@ -37,6 +37,15 @@ See [config.json]( ./config.json )
  3. Change "input" -> "name","samplerate" to match as your input device (or just remove to use system default)
  4. Enable/Disable "server" section (just remove to disable)
 
+Usage
+=====
+
+Run:
+
+	./go-KX3-panadapter --config ./config.json
+
+go-KX3-panadapter works as HTTP server. So open shown http: URL by WebGL supported browsers (Google Chrome / Mozilla Firefox).
+
 
 Development
 ===========
