@@ -3,7 +3,7 @@ go KX3 panadapter
 
 alpha (still development)
 
-<img src="https://dl.dropboxusercontent.com/u/673746/Screenshots/2014-08-19%2020.59.01.png"/>
+<img src="https://dl.dropboxusercontent.com/u/673746/Screenshots/2015-10-01%2009.31.59.png"/>
 
 <a href="//www.youtube.com/embed/x85sMfEmhzo">Movie</a>
 
@@ -35,7 +35,6 @@ See [config.json]( ./config.json )
  1. Change "port" -> "name" to path of USB serial device file (typically /dev/tty.usbserial-*)
  2. Check the "port" -> "baudrate" is same as KX3's RS-232 setting
  3. Change "input" -> "name","samplerate" to match as your input device (or just remove to use system default)
- 4. Enable/Disable "server" section (just remove to disable)
 
 Usage
 =====
