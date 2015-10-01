@@ -14,6 +14,11 @@ Polymer({
 		rigMode: {
 			type: String,
 			computed: "_convertRigMode(rigModeRaw)"
+		},
+
+		decodedText: {
+			type: String,
+			value: ""
 		}
 	},
 
@@ -101,6 +106,15 @@ Polymer({
 
 	openWebSocket : function () {
 		var self = this;
+
+		// TODO
+		var rateLimit = location.search.match(/rate=(\d)/);
+		if (rateLimit) {
+			rateLimit = +rateLimit[1];
+		} else {
+			rateLimit = 24;
+		}
+
 		self.ws = new WebSocket('ws://localhost:51235/stream');
 		self.ws.binaryType = 'arraybuffer';
 		self.ws.onopen = function () {
@@ -108,7 +122,7 @@ Polymer({
 
 			self.request('init', {
 				byteOrder: self.BYTE_ORDER,
-				rateLimit: 24
+				rateLimit: rateLimit
 			}).then(function (result) {
 				console.log('init', result);
 				self.config = result.config;
@@ -184,6 +198,9 @@ Polymer({
 		} else
 		if (result.type === 'modeChanged') {
 			self.set('rigModeRaw', result.data.rigMode);
+		} else
+		if (result.type === 'decoded') {
+			self.set('decodedText', (self.decodedText + result.data.char).slice(-40));
 		} else {
 			console.log('unexpected notification', result);
 		}

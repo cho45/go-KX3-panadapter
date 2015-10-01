@@ -469,8 +469,18 @@ func (self *Server) startSerial() error {
 			})
 		})
 
-		self.kx3.On(func(ev *kx3hq.EventStatusChange) {
+		self.kx3.On(func(ev *kx3hq.EventTextDecoded) {
+			self.broadcastNotification(&JSONRPCEventResponse{
+				Result: &JSONRPCEventResponseResult{
+					Type: "decoded",
+					Data: map[string]interface{}{
+						"char": ev.Text,
+					},
+				},
+			})
+		})
 
+		self.kx3.On(func(ev *kx3hq.EventStatusChange) {
 			var status string
 			switch ev.Status {
 			case kx3hq.STATUS_OPENED:
