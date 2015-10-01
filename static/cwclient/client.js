@@ -171,7 +171,12 @@ App.factory('MorseDevice', function ($q, config) {
 
 			self.socket = new WebSocket(self.opts.server);
 			self.socket.onopen = function () {
-				self.dispatchEvent('connected', {});
+				console.log('onopen');
+				self.command('init', { 
+					rateLimit: 0x10000
+				}, function () {
+					self.dispatchEvent('connected', {});
+				});
 			};
 			self.socket.onclose = function () {
 				self.dispatchEvent('disconnected', {});
@@ -182,7 +187,6 @@ App.factory('MorseDevice', function ($q, config) {
 				}, 1000);
 			};
 			self.socket.onmessage = function (e) {
-				console.log(e.data);
 				var data = JSON.parse(e.data);
 				if (typeof data.id == 'number') {
 					if (self._callbacks[data.id]) {
@@ -191,8 +195,8 @@ App.factory('MorseDevice', function ($q, config) {
 						console.log('unknown id response', data);
 					}
 				} else {
-					console.log('event', data.result.event, data.result.value);
-					self.dispatchEvent(data.result.event, data.result.value);
+					var res = data.result;
+					self.dispatchEvent(res.type, res.data);
 				}
 			};
 		},
@@ -248,7 +252,7 @@ App.factory('MorseDevice', function ($q, config) {
 					self._exhaust = true;
 					self.dispatchEvent('queue', { value : self.queue });
 					self.dispatchEvent('buffer', { value : self.buffer });
-					self.command('send', [ send ], function (data) {
+					self.command('send', { text: send }, function (data) {
 						self._exhaust = false;
 					});
 				});
@@ -259,37 +263,27 @@ App.factory('MorseDevice', function ($q, config) {
 
 		getDeviceBuffer : function (callback) {
 			var self = this;
-			self.command('device_buffer', [], callback);
+			self.command('deviceBuffer', {}, callback);
 		},
 
 		setSpeed : _.throttle(function (speed, callback) {
 			var self = this;
-			self.command('speed', [ speed ], callback);
+			self.command('speed', { speed: speed }, callback);
 		}, 250),
 
 		getSpeed : function (callback) {
 			var self = this;
-			self.command('speed', [], callback);
-		},
-
-		setInhibitTime : _.throttle(function (inhibit_time, callback) {
-			var self = this;
-			self.command('inhibit_time', [ inhibit_time ], callback);
-		}, 250),
-
-		getInhibitTime : function (callback) {
-			var self = this;
-			self.command('inhibit_time', [], callback);
+			self.command('speed', {}, callback);
 		},
 
 		setTone : _.throttle(function (tone, callback) {
 			var self = this;
-			self.command('tone', [ tone ], callback);
+			self.command('tone', { tone: tone }, callback);
 		}, 250),
 
 		getTone : function (callback) {
 			var self = this;
-			self.command('tone', [], callback);
+			self.command('tone', {}, callback);
 		},
 
 		stop : _.throttle(function (callback) {
@@ -297,7 +291,7 @@ App.factory('MorseDevice', function ($q, config) {
 			self.queue = '';
 			self.deviceQueue = 0;
 			self.dispatchEvent('queue', { value : self.queue });
-			self.command('stop', [], callback);
+			self.command('stop', {}, callback);
 			self.getDeviceBuffer(function (deviceBuffer) {
 				self.dispatchEvent('buffer', { value : deviceBuffer });
 			});
@@ -312,7 +306,6 @@ App.factory('MorseDevice', function ($q, config) {
 			} else {
 				self.buffer = self.buffer.slice(0, -1);
 				self.dispatchEvent('buffer', { value : self.buffer });
-				self.command('back', [], callback);
 			}
 		}, 100),
 
@@ -418,21 +411,12 @@ App.controller('MainCtrl', function ($scope, $timeout, $document, $modal, config
 		console.log('Failed to parse JSON: ' + e);
 	}
 
-	device.addListener('connect', function () {
-	});
-
-	device.addListener('opened', function () {
+	device.addListener('connected', function () {
 		console.log('opened!!!');
 		device.getSpeed(function (speed) {
 			console.log('getSpeed', speed);
 			$scope.$evalAsync(function () {
 				$scope.speed = +speed;
-			});
-		});
-		device.getInhibitTime(function (inhibit_time) {
-			console.log('inhibit_time', inhibit_time);
-			$scope.$evalAsync(function () {
-				$scope.inhibit_time = +inhibit_time;
 			});
 		});
 		device.getTone(function (tone) {

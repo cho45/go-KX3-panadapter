@@ -99,7 +99,8 @@ func (self *Server) startHttp() error {
 
 		session := &ServerSession{
 			ws:        ws,
-			rateLimit: 0,
+			byteOrder: nil,
+			rateLimit: 0x1000,
 		}
 
 		self.sessions = append(self.sessions, session)
@@ -114,10 +115,14 @@ func (self *Server) startHttp() error {
 
 			switch req.Method {
 			case "init":
-				if req.Params["byteOrder"].(string) == "BIG_ENDIAN" {
-					session.byteOrder = binary.BigEndian
-				} else {
-					session.byteOrder = binary.LittleEndian
+				switch byteOrder := req.Params["byteOrder"].(type) {
+				case string:
+					if byteOrder == "BIG_ENDIAN" {
+						session.byteOrder = binary.BigEndian
+					} else {
+						session.byteOrder = binary.LittleEndian
+					}
+				default:
 				}
 				session.rateLimit = int64(req.Params["rateLimit"].(float64)) * 1e6
 				session.initialized = true
@@ -188,7 +193,7 @@ func (self *Server) startHttp() error {
 			bufferBig.Reset()
 
 			for _, session := range self.sessions {
-				if !session.initialized {
+				if !session.initialized || session.byteOrder == nil {
 					continue
 				}
 				now := time.Now().UnixNano()
@@ -215,6 +220,7 @@ func (self *Server) startHttp() error {
 }
 
 func (self *Server) broadcastNotification(event *JSONRPCEventResponse) {
+	log.Printf("broadcast %s", event)
 	for _, session := range self.sessions {
 		if !session.initialized {
 			continue
