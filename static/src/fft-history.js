@@ -1,6 +1,11 @@
 Polymer({
 	is: 'my-fft-history',
 	properties: {
+		width : {
+			type: Number,
+			value: 0
+		},
+
 		fftSize : {
 			type: Number,
 			value: 0
@@ -33,7 +38,7 @@ Polymer({
 		self._current = 0;
 
 		self.$.historyCanvas.height = self.historySize;
-		self.$.historyCanvas.width  = self.offsetWidth * (window.devicePixelRatio || 1);
+		self.$.historyCanvas.width  = self.width || self.offsetWidth * (window.devicePixelRatio || 1);
 
 		self.initWebGL();
 		self.set('initialized', true);

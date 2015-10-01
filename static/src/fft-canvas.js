@@ -6,6 +6,11 @@ Polymer({
 			value: 100
 		},
 
+		width : {
+			type: Number,
+			value: 0
+		},
+
 		fftSize : {
 			type: Number,
 			value: 0
@@ -32,7 +37,7 @@ Polymer({
 		var self = this;
 
 		self.$.fftCanvas.height = self.height;
-		self.$.fftCanvas.width = self.offsetWidth * (window.devicePixelRatio || 1);
+		self.$.fftCanvas.width = self.width || self.offsetWidth * (window.devicePixelRatio || 1);
 
 		self.initWebGL();
 		self.set('initialized', true);

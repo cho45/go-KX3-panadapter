@@ -55,9 +55,12 @@ Polymer({
 		self.$.fftHistory.fftSize = self.config.fftSize;
 		self.$.fftCanvas.fftSize = self.config.fftSize;
 
-		self.$.fftHistory.init();
-		self.$.fftCanvas.init();
+		navigator.getBattery().then(function (bm) {
+			self.$.fftHistory.width = self.$.fftCanvas.width = (bm.charging ? 0 : self.offsetWidth);
 
+			self.$.fftHistory.init();
+			self.$.fftCanvas.init();
+		});
 		self.bindEvents();
 	},
 
@@ -204,6 +207,10 @@ Polymer({
 		} else {
 			console.log('unexpected notification', result);
 		}
+	},
+
+	formatFrequency : function (frequency) {
+		return String(frequency).replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1,').replace(/,/, '.').slice(0, -1);
 	},
 
 	_convertRigMode : function (raw) {

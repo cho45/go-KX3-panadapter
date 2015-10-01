@@ -64,7 +64,7 @@
 	<template>
 		<div id="container">
 			<div id="top">
-				<span class="rigFrequency"><span>{{rigFrequency}}</span>Hz</span>
+				<span class="rigFrequency"><span>{{formatFrequency(rigFrequency)}}</span> MHz</span>
 				<span class="decodedText">{{decodedText}}</span>
 			</div>
 
@@ -77,7 +77,7 @@
 			</div>
 
 			<div style="position: absolute; font-weight: bold; color: #fff; font-size: 14px; bottom: 0; left: 50%; transform: translate(-50%, 0)">
-				<span>{{rigFrequency}}</span>Hz
+				<span>{{formatFrequency(rigFrequency)}}</span> MHz
 			</div>
 		</div>
 	</template>
