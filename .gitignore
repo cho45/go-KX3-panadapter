@@ -1,2 +1,4 @@
 go-KX3-panadapter
 *.prof
+panadapter/_*.go
+config-*.json
