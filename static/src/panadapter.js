@@ -19,6 +19,42 @@ Polymer({
 		decodedText: {
 			type: String,
 			value: ""
+		},
+
+		buffer: {
+			type: String,
+			value: ""
+		},
+
+		queue : {
+			type: String,
+			value: ""
+		},
+
+		sent : {
+			type: Array,
+			value: []
+		},
+
+		sendingState : {
+			type: String,
+			value : ""
+		},
+
+		textHistory: {
+			type: Array,
+			value: []
+		},
+
+		textHistoryIndex: {
+			type: Number,
+			value: 0
+		},
+
+		textInputShow : {
+			type: Boolean,
+			value: false,
+			observer: "_textInputShowChanged"
 		}
 	},
 
@@ -46,6 +82,7 @@ Polymer({
 		var self = this;
 		console.log('attached');
 		self.openWebSocket();
+		self.openMorseDevice();
 	},
 
 	initCanvas : function () {
@@ -89,6 +126,104 @@ Polymer({
 			});
 		};
 
+		window.addEventListener('keydown', function (e) {
+			var key = (e.altKey?"Alt-":"")+(e.ctrlKey?"Control-":"")+(e.metaKey?"Meta-":"")+(e.shiftKey?"Shift-":"")+e.key;
+			console.log('window.onkeydown', key);
+
+			if (key === 'Enter') {
+				e.preventDefault();
+				self.textInputShow = !self.textInputShow;
+			} else
+			if (key === 'Escape') {
+				e.preventDefault();
+				self.textInputShow = false;
+				self.device.stop();
+			} else
+			if (key === 'Backspace') {
+				e.preventDefault();
+			}
+		});
+
+		self.$.textInputInput.addEventListener('keydown', function (e) {
+			e.stopPropagation();
+			var key = (e.altKey?"Alt-":"")+(e.ctrlKey?"Control-":"")+(e.metaKey?"Meta-":"")+(e.shiftKey?"Shift-":"")+e.key;
+			console.log('input.onkeydown', key);
+
+			if (/^(?:Shift-)?([A-Za-z0-9=+\-\?\/&\*%!\( ])$/.test(key)) {
+				if (self.$.textInputImmdiately.checked) {
+					var key = RegExp.$1;
+					e.preventDefault();
+					self.device.send(key.toUpperCase());
+				} else {
+					// do nothing
+				}
+			} else
+			if ('Escape' === key || 'Control-c' === key) {
+				e.preventDefault();
+				self.device.stop();
+				self.textInputShow = false;
+				self.$.textInputInput.inputElement.blur();
+			} else
+			if ('Enter' === key) {
+				e.preventDefault();
+				var text = self.$.textInputInput.value.toUpperCase();
+				if (text) {
+					console.log('SENDING', text);
+					self.$.textInputInput.value = '';
+					self.device.send(text);
+
+					if (self.textHistory[ self.textHistory.length - 1] !== text) {
+						self.push('textHistory', text);
+						while (self.textHistory.length > 100) self.shift('textHistory');
+					}
+					self.textHistoryIndex = 0;
+				}
+			} else
+			if ('Control-Enter' === key) { // BT
+				e.preventDefault();
+				self.device.send('=');
+			} else
+			if ('Shift-Control-Enter' === key) { // AR
+				e.preventDefault();
+				self.device.send('+');
+			} else
+			if ('ArrowUp' === key || "Control-p" === key) {
+				e.preventDefault();
+				var history = self.textHistory.slice(0).reverse();
+				self.textHistoryIndex++;
+				if (self.textHistoryIndex > history.length) {
+					self.textHistoryIndex = history.length;
+				}
+				try {
+					self.$.textInputInput.value = history[self.textHistoryIndex-1];
+				} catch (e) { }
+			} else
+			if ('ArrowDown' === key || "Control-n" === key) {
+				e.preventDefault();
+				var history = self.textHistory.slice(0).reverse(); // no warnings
+				if (self.textHistoryIndex > 0) self.textHistoryIndex--;
+				try {
+					self.$.textInputInput.value = history[self.textHistoryIndex-1] || "";
+				} catch (e) { }
+			} else
+			if ('Tab' === key) {
+				e.preventDefault();
+				self.$.textInputInput.value = '';
+				self.$.textInputImmdiately.checked = !self.$.textInputImmdiately.checked;
+				self.async(function () {
+					self.$.textInputInput.inputElement.focus();
+				}, 10);
+			} else
+			if ('Backspace' === key) {
+				if (!self.$.textInputInput.value.length) {
+					e.preventDefault();
+					self.device.back();
+				} else {
+				}
+			} else {
+				e.preventDefault();
+			}
+		});
 
 		window.onresize = function () {
 			self.debounce('onresize', function () {
@@ -171,6 +306,54 @@ Polymer({
 		};
 	},
 
+	openMorseDevice : function () {
+		var self = this;
+		self.device = new MorseDevice({
+			server : 'ws://localhost:51235/stream',
+			autoReconnect : true,
+			MIN : 5,
+			MAX : 9
+		});
+
+		var timer;
+
+		self.device.addListener('sent', function (e) {
+			if (e.char) {
+				self.push('sent', e.char);
+			} else {
+				self.push('sent', '<' + e.sign.replace(/111/g, '-').replace(/1/g, '.').replace(/0/g, '') + '>');
+			}
+			while (self.sent.length > 30) self.shift('sent');
+
+			activate();
+		});
+
+		self.device.addListener('buffer', function (e) {
+			self.set('buffer', e.value);
+			activate();
+		});
+
+		self.device.addListener('queue', function (e) {
+			self.set('queue', e.value);
+			activate();
+		});
+
+		self.device.connect();
+
+		function activate () {
+			self.cancelAsync(timer);
+			if (!self.buffer && !self.queue) {
+				// all data is sent
+				timer = self.async(function () {
+					self.set('sent', []);
+					self.toggleClass('active', false, self.$.text);
+				}, 5000);
+			} else {
+				self.toggleClass('active', true, self.$.text);
+			}
+		}
+	},
+
 	request : function (method, params) {
 		var self = this;
 
@@ -211,6 +394,20 @@ Polymer({
 
 	formatFrequency : function (frequency) {
 		return String(frequency).replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1,').replace(/,/, '.').slice(0, -1);
+	},
+
+	openTextInput : function () {
+		this.set('textInputShow', true);
+	},
+
+	_textInputShowChanged : function () {
+		var self = this;
+		self.toggleClass('show', self.textInputShow, self.$.textInput);
+		if (self.textInputShow) {
+			self.async(function () {
+				self.$.textInputInput.inputElement.focus();
+			});
+		}
 	},
 
 	_convertRigMode : function (raw) {

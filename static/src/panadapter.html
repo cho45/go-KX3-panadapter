@@ -1,5 +1,12 @@
 <link rel="import" href="../bower_components/polymer/polymer.html">
+
+<link rel="import" href="../bower_components/iron-flex-layout/classes/iron-flex-layout.html">
+<link rel="import" href="../bower_components/iron-flex-layout/iron-flex-layout.html">
 <link rel="import" href="../bower_components/paper-styles/paper-styles.html">
+<link rel="import" href="../bower_components/paper-input/paper-input.html">
+<link rel="import" href="../bower_components/paper-checkbox/paper-checkbox.html">
+<link rel="import" href="../bower_components/paper-button/paper-button.html">
+
 <link rel="import" href="./fft-history.html">
 <link rel="import" href="./fft-canvas.html">
 
@@ -16,6 +23,10 @@
 			margin: 0;
 			height: 100%;
 			width: 100%;
+
+			--secondary-text-color: #cccccc;
+			--default-primary-color: #333333;
+			--primary-text-color: #efefef;
 		}
 
 		#container {
@@ -55,9 +66,127 @@
 			color: #fff;
 		}
 
+		#text {
+			position: absolute;
+			top: 75px;
+			left: 0;
+			box-sizing: border-box;
+			font-size: 10px;
+			padding: 0;
+			background: rgba(0, 0, 0, 0.7);
+			z-index: 10;
+			color: #fff;
+
+			transition-delay: 0s;
+			transition-duration: 0.2s;
+			transition-property: all;
+			transition-timing-function: ease;
+		}
+
+		#text.active {
+			font-size: 16px;
+			top: 40%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			width: 75%;
+			max-width: 800px;
+		}
+
+		#text .status {
+			background: rgba(0, 0, 0, 0.1);
+			padding: 12px;
+			text-align: center;
+			line-height: 50px
+			font-size: 18px;
+			box-sizing: border-box;
+		}
+
+		#text.active .status {
+			background: rgba(255, 0, 0, 0.8);
+		}
+
+		#text .text {
+			display: none;
+			white-space: pre;
+			overflow: hidden;
+			padding: 12px;
+			text-align: left;
+			line-height: 50px
+			font-size: 18px;
+			box-sizing: border-box;
+		}
+
+		#text.active .text {
+			display: flex;
+		}
+
+		#textInput {
+			position: absolute;
+			top: 50%;
+			left: 50%;
+			transform: translate(-50%, -50%);
+			width: 75%;
+			max-width: 800px;
+			box-sizing: border-box;
+			font-size: 16px;
+			padding: 12px;
+			background: rgba(0, 0, 0, 0.7);
+			z-index: 10;
+			color: #fff;
+			opacity: 0;
+			visibility: hidden;
+			transition: opacity 0.2s linear;
+		}
+
+		#textInput.show {
+			opacity: 1;
+			visibility: visible;
+		}
+
+
+		#textInput paper-input {
+			--paper-input-container-color: #cccccc;
+			--paper-input-container-focus-color: #ffffff;
+			--paper-input-container-input-color: #ffffff;
+			--paper-font-caption: {
+				display: none;
+			};
+			--paper-input-container: {
+				padding: 0;
+			};
+		}
+
+
+		#textInput paper-button {
+			font-size: 12px;
+			margin-top: 16px;
+			background: rgba(0, 0, 0, 0.3);
+		}
+
+
 		#top .rigFrequency {
 			font-size: 18px;
 			font-weight: bold;
+		}
+
+		.cont {
+			text-decoration: overline;
+		}
+
+		kbd {
+			display: inline-block;
+			padding: 2px 8px;
+			margin: 0 5px;
+			border-radius: 3px;
+			font-size: 12px;
+			background: rgba(0, 0, 0, 0.2);
+		}
+
+		paper-button kbd {
+			border: 1px solid rgba(255, 255, 255, 0.2);
+			background: transparent;
+			padding: 0 5px;
+			border-radius: 5px;
 		}
 	</style>
 
@@ -65,8 +194,61 @@
 		<div id="container">
 			<div id="top">
 				<span class="rigFrequency"><span>{{formatFrequency(rigFrequency)}}</span> MHz</span>
+				<span class="rigMode"><span>{{rigMode}}</span></span>
 				<span class="decodedText">{{decodedText}}</span>
 			</div>
+
+			<div id="text" class="layout horizontal">
+				<div class="status" on-click="openTextInput">
+					TX
+				</div>
+				<div class="text flex">
+					<span class="sent"
+						><template is="dom-repeat" items="{{sent}}"
+							><span class="char">{{item}}</span
+						></template
+					></span
+					><span class="buffer">{{buffer}}</span
+					><span class="queue">{{queue}}</span>
+
+					<style scoped>
+						.sent {
+							opacity: 0.3;
+						}
+
+						.buffer {
+							color: #000;
+							background: rgba(255, 255, 255, 0.8);
+						}
+
+						.queue {
+							opacity: 0.8;
+						}
+					</style>
+				</div>
+			</div>
+
+			<div id="textInput" class="show" style="padding: 16px">
+				<div class="layout horizontal">
+					<paper-input id="textInputInput" class="flex" autocapitalize list="inputDataList" placeholder="Input" noLabelFloat></paper-input>
+					<div style="margin-left: 16px">
+						<paper-checkbox id="textInputImmdiately">Immediate <kbd>Tab</kbd></paper-checkbox>
+					</div>
+				</div>
+				<div class="">
+					<paper-button><span class="cont">BT</span> <kbd>=</kbd></paper-button>
+					<paper-button><span class="cont">AR</span> <kbd>+</kbd></paper-button>
+					<paper-button><span class="cont">HH</span> <kbd>BS</kbd></kbd></paper-button>
+					<paper-button><span class="cont">AS</span> <kbd>%</kbd></paper-button>
+					<paper-button><span class="cont">SK</span> <kbd>*</kbd></paper-button>
+					<paper-button><span class="cont">SN</span> <kbd>!</kbd></paper-button>
+					<paper-button><span class="cont">KN</span> <kbd>(</kbd></paper-button>
+				</div>
+			</div>
+
+			<datalist id="inputDataList">
+				<option value="CQ CQ DE">CQ CQ DE</option>
+			</datalist>
 
 			<div id="historyContainer">
 				<my-fft-history id="fftHistory"></my-fft-history>
@@ -83,5 +265,8 @@
 	</template>
 </dom-module>
 
+<script src="keyboard.js"></script>
+<script src="underscore.js"></script>
+<script src="morse-device.js"></script>
 <script src="panadapter.js"></script>
 
