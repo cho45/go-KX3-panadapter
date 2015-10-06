@@ -5,7 +5,7 @@ alpha (still development)
 
 <img src="https://dl.dropboxusercontent.com/u/673746/Screenshots/2015-10-01%2009.31.59.png"/>
 
-<a href="//www.youtube.com/embed/x85sMfEmhzo">Movie</a>
+<a href="https://youtu.be/scCF7HCArNY">Movie</a>
 
 Features
 ========
