@@ -53,10 +53,17 @@ Most code is written in golang. I don't build binary because this project is sti
 
 ## Mac OS X
 
+Install prerequisites:
 ```
 brew install portaudio
 ```
 
+Download sources:
+```
+go get
+```
+
+Build and run:
 ```
 go build && ./go-KX3-panadapter
 ```

@@ -203,13 +203,13 @@
 					TX
 				</div>
 				<div class="text flex">
-					<span class="sent"
-						><template is="dom-repeat" items="{{sent}}"
-							><span class="char">{{item}}</span
-						></template
-					></span
-					><span class="buffer">{{buffer}}</span
-					><span class="queue">{{queue}}</span>
+					<span class="sent">
+						<template is="dom-repeat" items="{{sent}}">
+							<span class="char">{{item}}</span>
+						</template>
+					</span>
+					<span class="buffer">{{buffer}}</span>
+					<span class="queue">{{queue}}</span>
 
 					<style scoped>
 						.sent {
