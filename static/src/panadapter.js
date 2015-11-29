@@ -253,7 +253,7 @@ Polymer({
 			rateLimit = 24;
 		}
 
-		self.ws = new WebSocket('ws://localhost:51235/stream');
+		self.ws = new WebSocket('ws://' + location.host + '/stream');
 		self.ws.binaryType = 'arraybuffer';
 		self.ws.onopen = function () {
 			console.log('onopen');
@@ -309,7 +309,7 @@ Polymer({
 	openMorseDevice : function () {
 		var self = this;
 		self.device = new MorseDevice({
-			server : 'ws://localhost:51235/stream',
+			server : 'ws://' + location.host + '/stream',
 			autoReconnect : true,
 			MIN : 5,
 			MAX : 9
