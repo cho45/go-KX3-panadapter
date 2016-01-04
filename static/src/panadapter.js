@@ -238,7 +238,9 @@ Polymer({
 			var x = e.pageX - bcr.left, y = e.pageY - bcr.top;
 			// normalize to -0.5 0.5
 			var pos = x / (bcr.right - bcr.left) - 0.5;
-			return self.rigFrequency - (self.config.input.samplerate * pos);
+			var diff = self.config.input.samplerate * pos;
+			console.log('diff', self.rigFrequency, diff);
+			return self.rigFrequency + diff;
 		}
 	},
 
